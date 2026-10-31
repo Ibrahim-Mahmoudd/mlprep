@@ -245,6 +245,14 @@ class Phase6FingerprintManager:
     ) -> str:
         """Generate a fingerprint of fitted state."""
 
+        lineage_payload = (
+            state.lineage.model_dump(mode="json")
+            if state.lineage is not None
+            else None
+        )
+        if lineage_payload is not None:
+            lineage_payload.pop("created_at", None)
+
         payload = {
             "numeric": {
                 column: value.model_dump(
@@ -298,13 +306,7 @@ class Phase6FingerprintManager:
                     .items()
                 )
             ),
-            "lineage": (
-                state.lineage.model_dump(
-                    mode="json"
-                )
-                if state.lineage is not None
-                else None
-            ),
+            "lineage": lineage_payload,
             "configuration": (
                 state.configuration_fingerprint
             ),

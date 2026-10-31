@@ -302,6 +302,14 @@ class Phase7FingerprintManager:
     ) -> str:
         """Generate a fitted-state fingerprint."""
 
+        selected_lineage = (
+            state.selected_lineage.model_dump(mode="json")
+            if state.selected_lineage is not None
+            else None
+        )
+        if selected_lineage is not None:
+            selected_lineage.pop("created_at", None)
+
         payload = {
             "source_features": (
                 state.source_feature_columns
@@ -351,13 +359,7 @@ class Phase7FingerprintManager:
                 if state.stability_result is not None
                 else None
             ),
-            "selected_lineage": (
-                state.selected_lineage.model_dump(
-                    mode="json"
-                )
-                if state.selected_lineage is not None
-                else None
-            ),
+            "selected_lineage": selected_lineage,
             "configuration": (
                 state.configuration_fingerprint
             ),
