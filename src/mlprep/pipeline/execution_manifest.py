@@ -47,13 +47,20 @@ class PipelineExecutionManifest(BaseModel):
     def fingerprint_configuration(config: object) -> str:
         """Fingerprint a resolved configuration without exposing its values."""
 
+        resolved = getattr(config, "resolved_configuration", config)
         serialized = json.dumps(
-            _json_compatible(config),
+            _json_compatible(resolved),
             sort_keys=True,
             separators=(",", ":"),
             ensure_ascii=False,
         )
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def configuration_value(value: object) -> Any:
+        """Convert one configuration section to canonical JSON values."""
+
+        return _json_compatible(value)
 
     @staticmethod
     def dataframe_fingerprint(data: pd.DataFrame) -> str:

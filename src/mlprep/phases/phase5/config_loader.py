@@ -66,7 +66,6 @@ from mlprep.phases.phase5.validation.target_integrity import (
     TargetIntegrityOptions,
 )
 
-
 ConfigFormat = Literal[
     "yaml",
     "json",
@@ -505,6 +504,15 @@ class Phase5ConfigLoader:
             )
         )
 
+        fail_on_missing_column = data.pop(
+            "fail_on_missing_column",
+            True,
+        )
+        require_identical_index = data.pop(
+            "require_identical_index",
+            True,
+        )
+
         if data:
             raise ValueError(
                 "Unknown detector-engine options: "
@@ -515,6 +523,8 @@ class Phase5ConfigLoader:
             iqr=iqr,
             quantile=quantile,
             robust_zscore=robust_zscore,
+            fail_on_missing_column=fail_on_missing_column,
+            require_identical_index=require_identical_index,
         )
 
     @classmethod

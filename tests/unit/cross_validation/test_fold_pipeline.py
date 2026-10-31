@@ -125,6 +125,33 @@ def test_stratified_runner_fits_transformers_on_training_rows_only() -> None:
     pd.testing.assert_frame_equal(features, original_features)
 
 
+def test_k_fold_runner_supports_continuous_regression_targets() -> None:
+    features = pd.DataFrame(
+        {"feature": np.linspace(0.0, 1.0, 30)}
+    )
+    target = pd.Series(
+        np.linspace(10.0, 20.0, 30),
+        name="target",
+    )
+    result = CrossValidationRunner(
+        CrossValidationConfig(
+            strategy=CrossValidationStrategy.K_FOLD,
+            n_splits=3,
+            random_seed=5,
+            shuffle=True,
+        )
+    ).run(features=features, target=target)
+
+    assert len(result.folds) == 3
+    for fold in result.folds:
+        assert set(fold.context.training_indices).isdisjoint(
+            fold.context.validation_indices
+        )
+        assert len(fold.training_features) + len(
+            fold.validation_features
+        ) == len(features)
+
+
 def test_changing_validation_does_not_change_fitted_training_state() -> None:
     features, target = _classification_data()
     config = CrossValidationConfig(

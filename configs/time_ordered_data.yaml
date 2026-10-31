@@ -1,0 +1,39 @@
+schema_version: "1"
+phase1:
+  problem_contract:
+    task_type: binary_classification
+    target_column: target
+    positive_class: 1
+    unit_of_observation: one row at a timestamp
+    prediction_timestamp_column: timestamp
+  column_roles:
+    target_column: target
+    feature_columns:
+      - feature_a
+      - feature_b
+    timestamp_columns:
+      - timestamp
+    prediction_timestamp_column: timestamp
+  target_validation:
+    target_column: target
+    task_type: binary_classification
+    positive_class: 1
+  leakage_risks:
+    target_column: target
+phase2:
+  strategy: time
+  random_seed: 42
+  split_roles:
+    target_column: target
+    feature_columns:
+      - feature_a
+      - feature_b
+    timestamp_column: timestamp
+cross_validation:
+  strategy: time_series
+  n_splits: 5
+  random_seed: 42
+  shuffle: false
+pipeline:
+  output_directory: null
+  save_intermediate_states: true

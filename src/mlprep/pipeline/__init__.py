@@ -1,8 +1,15 @@
 """Unified pipeline runner for MLPrep."""
 
 from mlprep.pipeline.checkpoint import PipelineCheckpoint
-from mlprep.pipeline.config import MLPrepPipelineConfig
-from mlprep.pipeline.config_loader import PipelineConfigLoader
+from mlprep.pipeline.config import (
+    MLPrepConfig,
+    MLPrepPipelineConfig,
+    PipelineOptions,
+)
+from mlprep.pipeline.config_loader import (
+    MLPrepConfigLoader,
+    PipelineConfigLoader,
+)
 from mlprep.pipeline.execution_manifest import (
     PhaseExecutionRecord,
     PipelineExecutionManifest,
@@ -16,6 +23,8 @@ from mlprep.pipeline.result import (
 from mlprep.pipeline.state import MLPrepPipelineState
 
 __all__ = [
+    "MLPrepConfig",
+    "MLPrepConfigLoader",
     "MLPrepPipeline",
     "MLPrepPipelineConfig",
     "MLPrepPipelineState",
@@ -24,6 +33,7 @@ __all__ = [
     "PipelineConfigLoader",
     "PipelineExecutionManifest",
     "PipelineExecutionResult",
+    "PipelineOptions",
     "PipelineReadinessError",
     "PipelineResumeError",
 ]

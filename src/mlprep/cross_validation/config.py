@@ -9,6 +9,7 @@ from enum import StrEnum
 class CrossValidationStrategy(StrEnum):
     """Supported fold-generation strategies."""
 
+    K_FOLD = "k_fold"
     STRATIFIED = "stratified"
     GROUP = "group"
     TIME_SERIES = "time_series"
@@ -48,9 +49,14 @@ class CrossValidationConfig:
         if self.shuffle is not None and not isinstance(self.shuffle, bool):
             raise TypeError("shuffle must be a Boolean or None.")
         if (
-            self.strategy != CrossValidationStrategy.STRATIFIED
+            self.strategy
+            not in {
+                CrossValidationStrategy.K_FOLD,
+                CrossValidationStrategy.STRATIFIED,
+            }
             and self.shuffle is True
         ):
             raise ValueError(
-                "shuffle=True is only supported for stratified cross-validation."
+                "shuffle=True is only supported for k-fold or "
+                "stratified cross-validation."
             )

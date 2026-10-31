@@ -1,0 +1,39 @@
+schema_version: "1"
+phase1:
+  problem_contract:
+    task_type: binary_classification
+    target_column: target
+    positive_class: 1
+    unit_of_observation: one row
+  column_roles:
+    target_column: target
+    feature_columns:
+      - feature_a
+      - feature_b
+  target_validation:
+    target_column: target
+    task_type: binary_classification
+    positive_class: 1
+  leakage_risks:
+    target_column: target
+phase2:
+  strategy: stratified
+  random_seed: 42
+  split_roles:
+    target_column: target
+    feature_columns:
+      - feature_a
+      - feature_b
+phase8:
+  plan:
+    task: classification
+    strategy: class_weights_only
+    class_weight_method: balanced
+    class_weight_normalization: mean_one
+cross_validation:
+  strategy: stratified
+  n_splits: 5
+  random_seed: 42
+pipeline:
+  output_directory: null
+  save_intermediate_states: true

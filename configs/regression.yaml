@@ -1,0 +1,32 @@
+schema_version: "1"
+phase1:
+  problem_contract:
+    task_type: regression
+    target_column: target
+    unit_of_observation: one row
+  column_roles:
+    target_column: target
+    feature_columns:
+      - feature_a
+      - feature_b
+  target_validation:
+    target_column: target
+    task_type: regression
+  leakage_risks:
+    target_column: target
+phase2:
+  strategy: regression_stratified
+  random_seed: 42
+  split_roles:
+    target_column: target
+    feature_columns:
+      - feature_a
+      - feature_b
+cross_validation:
+  strategy: k_fold
+  n_splits: 5
+  random_seed: 42
+  shuffle: true
+pipeline:
+  output_directory: null
+  save_intermediate_states: true

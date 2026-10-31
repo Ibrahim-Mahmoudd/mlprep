@@ -9,6 +9,7 @@ from typing import Any, Protocol, runtime_checkable
 import pandas as pd
 from sklearn.model_selection import (
     GroupKFold,
+    KFold,
     StratifiedKFold,
     TimeSeriesSplit,
 )
@@ -485,6 +486,24 @@ class CrossValidationRunner:
         groups: pd.Series | None,
     ) -> Any:
         strategy = self.config.strategy
+        if strategy == CrossValidationStrategy.K_FOLD:
+            if groups is not None:
+                raise ValueError(
+                    "groups are only accepted for group cross-validation."
+                )
+            shuffle = (
+                self.config.shuffle
+                if self.config.shuffle is not None
+                else False
+            )
+            splitter = KFold(
+                n_splits=self.config.n_splits,
+                shuffle=shuffle,
+                random_state=(
+                    self.config.random_seed if shuffle else None
+                ),
+            )
+            return splitter.split(features, target)
         if strategy == CrossValidationStrategy.STRATIFIED:
             if groups is not None:
                 raise ValueError(
