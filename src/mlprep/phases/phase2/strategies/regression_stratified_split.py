@@ -14,9 +14,6 @@ from mlprep.phases.phase2.output_governance.metadata import (
     SplitRatios,
     SplitStrategyName,
 )
-from mlprep.phases.phase2.output_governance.result import (
-    SplitFinding,
-)
 from mlprep.phases.phase2.strategies.base import (
     StrategyPartitions,
 )

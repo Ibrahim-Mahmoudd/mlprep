@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -407,12 +407,7 @@ class BaseTreatmentStrategy(ABC):
             )
 
             if not unique_values.issubset(
-                {
-                    True,
-                    False,
-                    0,
-                    1,
-                }
+                {False, True}
             ):
                 raise TypeError(
                     "The outlier mask must be Boolean-like."

@@ -6,7 +6,7 @@ import json
 from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import yaml
 
@@ -136,21 +136,21 @@ ConfigFormat = Literal[
 class Phase3ConfigLoader:
     """Load, merge, validate, and save Phase 3 configurations."""
 
-    yaml_extensions = {
+    yaml_extensions: ClassVar[frozenset[str]] = frozenset({
         ".yaml",
         ".yml",
-    }
+    })
 
-    json_extensions = {
+    json_extensions: ClassVar[frozenset[str]] = frozenset({
         ".json",
-    }
+    })
 
-    supported_extensions = (
+    supported_extensions: ClassVar[frozenset[str]] = (
         yaml_extensions
         | json_extensions
     )
 
-    allowed_sections = {
+    allowed_sections: ClassVar[frozenset[str]] = frozenset({
         "execution",
         "contract",
         "column_selection",
@@ -161,7 +161,7 @@ class Phase3ConfigLoader:
         "recommendations",
         "readiness",
         "reporting",
-    }
+    })
 
     @classmethod
     def load(

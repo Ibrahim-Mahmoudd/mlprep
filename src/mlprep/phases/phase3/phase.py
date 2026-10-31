@@ -91,7 +91,6 @@ from mlprep.phases.phase3.profiling.text_profile import (
     TextProfiler,
 )
 from mlprep.phases.phase3.recommendations.recommendation_engine import (
-    Phase3Recommendations,
     RecommendationEngine,
 )
 from mlprep.phases.phase3.relationships.categorical_associations import (

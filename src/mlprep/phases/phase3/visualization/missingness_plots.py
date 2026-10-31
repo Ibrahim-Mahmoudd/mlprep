@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from mlprep.phases.phase3.contract.eda_contract import (
     EDAContract,

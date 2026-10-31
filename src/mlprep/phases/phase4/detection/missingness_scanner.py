@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
 from mlprep.phases.phase2.output_governance.metadata import (

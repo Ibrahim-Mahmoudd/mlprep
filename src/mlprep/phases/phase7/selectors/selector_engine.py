@@ -9,7 +9,6 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
 from mlprep.phases.phase7.contract.selection_plan import (
-    SelectionComponentStatus,
     SelectionPlan,
     SelectorAggregationKind,
 )

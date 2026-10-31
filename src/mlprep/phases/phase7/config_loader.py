@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Union, get_args, get_origin, get_type_hints
+from typing import Any, ClassVar, Union, get_args, get_origin, get_type_hints
 from types import UnionType
 
 import yaml
@@ -19,7 +19,7 @@ from mlprep.phases.phase7.config import Phase7Config
 class Phase7ConfigLoader:
     """Load, validate, merge, override, and save Phase 7 config."""
 
-    allowed_sections = {
+    allowed_sections: ClassVar[frozenset[str]] = frozenset({
         "execution",
         "contract",
         "plan",
@@ -27,7 +27,7 @@ class Phase7ConfigLoader:
         "validation",
         "readiness",
         "reporting",
-    }
+    })
 
     @classmethod
     def load(

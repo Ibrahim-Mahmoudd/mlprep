@@ -6,7 +6,7 @@ import json
 from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import yaml
 
@@ -70,7 +70,7 @@ ConfigFormat = Literal[
 class Phase6ConfigLoader:
     """Load and save Phase 6 configuration."""
 
-    allowed_sections = {
+    allowed_sections: ClassVar[frozenset[str]] = frozenset({
         "execution",
         "contract",
         "plan",
@@ -84,7 +84,7 @@ class Phase6ConfigLoader:
         "validation",
         "readiness",
         "reporting",
-    }
+    })
 
     @classmethod
     def load(

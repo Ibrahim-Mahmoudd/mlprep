@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TypeVar
 
 from mlprep.phases.phase2.output_governance.result import (

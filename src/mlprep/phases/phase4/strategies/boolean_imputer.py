@@ -161,8 +161,6 @@ class BooleanImputer(BaseImputer):
         ) and value in {
             0,
             1,
-            0.0,
-            1.0,
         }:
             return bool(value)
 

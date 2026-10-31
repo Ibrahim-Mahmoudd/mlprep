@@ -20,7 +20,6 @@ from mlprep.phases.phase6.categorical.categorical_pipeline import (
     CategoricalPipelineResult,
 )
 from mlprep.phases.phase6.contract.transformation_plan import (
-    FeatureFamily,
     PlanEntryStatus,
     SourceColumnPolicy,
     TransformationPlan,

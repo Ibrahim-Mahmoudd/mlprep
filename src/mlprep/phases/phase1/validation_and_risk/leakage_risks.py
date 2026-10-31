@@ -13,7 +13,6 @@ from mlprep.phases.phase1.output_governance.result import (
 )
 from mlprep.phases.phase1.output_governance.state import Phase1State
 from mlprep.types import (
-    ColumnRole,
     FindingAction,
     FindingCategory,
     Severity,
