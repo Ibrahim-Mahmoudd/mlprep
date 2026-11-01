@@ -12,7 +12,6 @@ from mlprep.phases.phase6.numeric.base import (
     BaseNumericTransformer,
 )
 
-
 LogMethod = Literal[
     "log1p",
     "signed_log1p",
@@ -92,10 +91,7 @@ class LogTransformer(BaseNumericTransformer):
         if self.options.method == "log1p":
             invalid_mask = (
                 valid
-                < (
-                    -1.0
-                    - self.options.domain_tolerance
-                )
+                <= -1.0
             )
 
             if bool(
@@ -104,7 +100,7 @@ class LogTransformer(BaseNumericTransformer):
                 raise ValueError(
                     f"log1p cannot transform feature "
                     f"{self.column!r} because training values "
-                    "below -1 were found."
+                    "at or below -1 were found."
                 )
 
         return {
@@ -126,10 +122,7 @@ class LogTransformer(BaseNumericTransformer):
         if self.options.method == "log1p":
             invalid_mask = (
                 values
-                < (
-                    -1.0
-                    - self.options.domain_tolerance
-                )
+                <= -1.0
             )
 
             if bool(
@@ -138,7 +131,7 @@ class LogTransformer(BaseNumericTransformer):
                 ).any()
             ):
                 raise ValueError(
-                    f"log1p received values below -1 for "
+                    f"log1p received values at or below -1 for "
                     f"feature {self.column!r}."
                 )
 

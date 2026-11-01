@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -99,16 +101,62 @@ def test_log1p_handles_positive_zero_and_lower_domain_boundary() -> None:
     assert transformed.index.equals(values.index)
     assert transformed.name == values.name
     assert values.equals(original)
-    with pytest.raises(ValueError, match="below -1"):
+    with pytest.raises(ValueError, match="at or below -1"):
         transformer.transform(
             pd.Series([-1.01], name="value"),
             mode=NumericExecutionMode.VALIDATION_TRANSFORM,
         )
-    with pytest.raises(ValueError, match="nonfinite values"):
-        transformer.transform(
-            pd.Series([-1.0], name="value"),
-            mode=NumericExecutionMode.VALIDATION_TRANSFORM,
+
+
+@pytest.mark.parametrize("invalid_value", [-1.0, -1.01])
+def test_log1p_rejects_invalid_domain_without_runtime_warnings(
+    invalid_value: float,
+) -> None:
+    transformer = LogTransformer(column="value").fit(
+        pd.Series([0.0, 1.0], name="value")
+    )
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with pytest.raises(ValueError, match="at or below -1"):
+            transformer.transform(
+                pd.Series([invalid_value], name="value"),
+                mode=NumericExecutionMode.VALIDATION_TRANSFORM,
+            )
+    assert caught == []
+
+    with pytest.raises(ValueError, match="at or below -1"):
+        LogTransformer(column="value").fit(
+            pd.Series([invalid_value, 1.0], name="value")
         )
+
+
+def test_log1p_is_deterministic_and_preserves_input_dtype_policy() -> None:
+    values = pd.Series(
+        [0.25, 0.0, 4.0],
+        index=[8, 2, 5],
+        name="value",
+        dtype="float32",
+    )
+    original = values.copy(deep=True)
+    transformer = LogTransformer(
+        column="value",
+        options=LogTransformerOptions(preserve_float32=True),
+    ).fit(values)
+    first = transformer.transform(
+        values,
+        mode=NumericExecutionMode.VALIDATION_TRANSFORM,
+    )
+    second = transformer.transform(
+        values.copy(deep=True),
+        mode=NumericExecutionMode.TEST_TRANSFORM,
+    )
+
+    pd.testing.assert_series_equal(first, second)
+    assert str(first.dtype) == "float32"
+    assert first.index.equals(values.index)
+    assert first.name == values.name
+    pd.testing.assert_series_equal(values, original)
 
 
 def test_signed_log1p_supports_negative_zero_and_positive_values() -> None:
@@ -127,7 +175,10 @@ def test_signed_log1p_supports_negative_zero_and_positive_values() -> None:
 
 
 def test_log1p_rejects_training_values_outside_the_domain() -> None:
-    with pytest.raises(ValueError, match="training values below -1"):
+    with pytest.raises(
+        ValueError,
+        match="training values at or below -1",
+    ):
         LogTransformer(column="value").fit(
             pd.Series([-2.0, 1.0], name="value")
         )
@@ -186,6 +237,10 @@ def test_box_cox_transformer_requires_positive_training_and_transform_values() -
     with pytest.raises(ValueError, match="strictly positive"):
         BoxCoxTransformer(column="value").fit(
             pd.Series([0.0, 1.0, 2.0], name="value")
+        )
+    with pytest.raises(ValueError, match="strictly positive"):
+        BoxCoxTransformer(column="value").fit(
+            pd.Series([-0.5, 1.0, 2.0], name="value")
         )
     with pytest.raises(ValueError, match="strictly positive"):
         transformer.transform(
@@ -262,6 +317,47 @@ def test_robust_scaler_handles_zero_iqr_and_custom_quantiles() -> None:
     assert transformed.tolist() == [0.0, 0.0, 0.0, 0.0, 10.0]
 
 
+def test_minmax_default_dtype_and_input_immutability() -> None:
+    training = pd.Series(
+        [2.0, 4.0, 8.0],
+        index=[7, 3, 9],
+        name="amount",
+        dtype="float32",
+    )
+    original = training.copy(deep=True)
+    scaler = MinMaxScaler(
+        column="amount",
+        options=MinMaxScalerOptions(preserve_float32=True),
+    )
+
+    transformed = scaler.fit_transform(training)
+
+    assert transformed.tolist() == pytest.approx([0.0, 1.0 / 3.0, 1.0])
+    assert str(transformed.dtype) == "float32"
+    assert transformed.index.equals(training.index)
+    assert transformed.name == training.name
+    pd.testing.assert_series_equal(training, original)
+
+
+def test_robust_scaler_uses_training_median_and_iqr_with_outliers() -> None:
+    training = pd.Series(
+        [0.0, 1.0, 2.0, 3.0, 100.0],
+        index=[10, 11, 12, 13, 14],
+        name="amount",
+    )
+    original = training.copy(deep=True)
+    scaler = RobustScaler(column="amount")
+
+    transformed = scaler.fit_transform(training)
+
+    assert scaler.get_state().learned_parameters["center"] == 2.0
+    assert scaler.get_state().learned_parameters["scale"] == 2.0
+    assert transformed.tolist() == pytest.approx(
+        [-1.0, -0.5, 0.0, 0.5, 49.0]
+    )
+    pd.testing.assert_series_equal(training, original)
+
+
 @pytest.mark.parametrize(
     "transformer",
     [
@@ -325,7 +421,56 @@ def test_fitted_numeric_statistics_are_training_only_and_stable() -> None:
     "factory",
     [
         lambda: LogTransformer(column="value"),
+        lambda: PowerTransformer(
+            column="value",
+            options=PowerTransformerOptions(search_steps=31),
+        ),
+        lambda: BoxCoxTransformer(
+            column="value",
+            options=BoxCoxTransformerOptions(search_steps=31),
+        ),
+        lambda: MinMaxScaler(column="value"),
+        lambda: StandardScaler(column="value"),
+        lambda: RobustScaler(column="value"),
+    ],
+)
+def test_numeric_transformers_never_fit_validation_or_test_values(
+    factory,
+) -> None:
+    transformer = factory()
+    training = pd.Series([1.0, 2.0, 4.0, 8.0], name="value")
+    transformer.fit(training)
+    fitted_parameters = (
+        transformer.get_state().learned_parameters.copy()
+    )
+    fitted_metadata = transformer.get_state().metadata.copy()
+
+    transformer.transform(
+        pd.Series([2.5, 6.0], name="value"),
+        mode=NumericExecutionMode.VALIDATION_TRANSFORM,
+    )
+    transformer.transform(
+        pd.Series([1.25, 9000.0], name="value"),
+        mode=NumericExecutionMode.VALIDATION_TRANSFORM,
+    )
+    transformer.transform(
+        pd.Series([3.5, 7.0], name="value"),
+        mode=NumericExecutionMode.TEST_TRANSFORM,
+    )
+
+    state_after = transformer.get_state()
+    assert state_after.learned_parameters == fitted_parameters
+    assert state_after.metadata == fitted_metadata
+    assert state_after.fitted_on_training_only
+    assert state_after.training_row_count == len(training)
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: LogTransformer(column="value"),
         lambda: PowerTransformer(column="value"),
+        lambda: BoxCoxTransformer(column="value"),
         lambda: MinMaxScaler(column="value"),
         lambda: StandardScaler(column="value"),
         lambda: RobustScaler(column="value"),
@@ -492,6 +637,112 @@ def test_numeric_pipeline_states_round_trip_and_transform_deterministically() ->
     assert restored_states["value"].model_dump(mode="json") == (
         pipeline.get_states()["value"].model_dump(mode="json")
     )
+
+
+def test_numeric_pipeline_uses_train_only_for_all_partition_transforms() -> None:
+    training = pd.DataFrame(
+        {
+            "signed": [-4.0, -1.0, 1.0, 5.0],
+            "plain": [2.0, 4.0, 8.0, 16.0],
+            "untouched": ["a", "b", "c", "d"],
+        },
+        index=[20, 10, 30, 40],
+    )
+    validation = pd.DataFrame(
+        {
+            "signed": [-20.0, 30.0],
+            "plain": [-100.0, 100.0],
+            "unknown": [99, 100],
+        },
+        index=[91, 83],
+    )
+    test = pd.DataFrame(
+        {
+            "signed": [0.0, 100.0],
+            "plain": [-500.0, 500.0],
+            "unknown": [1, 2],
+        },
+        index=[61, 52],
+    )
+    originals = [
+        frame.copy(deep=True)
+        for frame in (training, validation, test)
+    ]
+    plan = TransformationPlan(
+        entries={
+            "signed": _entry(
+                "signed",
+                NumericTransformationKind.YEO_JOHNSON,
+                NumericScalingKind.STANDARD,
+            ),
+            "plain": _entry(
+                "plain",
+                NumericTransformationKind.NONE,
+                NumericScalingKind.MINMAX,
+            ),
+        },
+        numeric_columns=["signed", "plain"],
+    )
+    pipeline = NumericPipeline(
+        NumericPipelineOptions(
+            power=PowerTransformerOptions(search_steps=31)
+        )
+    ).fit(frame=training, plan=plan)
+    state_before = {
+        column: state.model_dump(mode="json")
+        for column, state in pipeline.get_states().items()
+    }
+
+    results = [
+        pipeline.transform(
+            frame=training,
+            mode=NumericExecutionMode.TRAINING_TRANSFORM,
+        ),
+        pipeline.transform(
+            frame=validation,
+            mode=NumericExecutionMode.VALIDATION_TRANSFORM,
+        ),
+        pipeline.transform(
+            frame=test,
+            mode=NumericExecutionMode.TEST_TRANSFORM,
+        ),
+    ]
+    expected_columns = [
+        "signed__numeric__yeo_johnson__standard",
+        "plain__numeric__none__minmax",
+    ]
+    for frame, result in zip(
+        (training, validation, test),
+        results,
+        strict=True,
+    ):
+        assert result.output_columns == expected_columns
+        assert result.frame.columns.tolist() == expected_columns
+        assert result.frame.index.equals(frame.index)
+        assert np.isfinite(result.frame.to_numpy()).all()
+
+    assert {
+        column: state.model_dump(mode="json")
+        for column, state in pipeline.get_states().items()
+    } == state_before
+    assert all(
+        state.fitted_on_training_only
+        for state in pipeline.get_states().values()
+    )
+    for state in pipeline.get_states().values():
+        for nested_state in (
+            state.transformation_state,
+            state.scaler_state,
+        ):
+            if nested_state is not None:
+                assert nested_state.fitted_on_training_only
+                assert nested_state.training_row_count == len(training)
+    for frame, original in zip(
+        (training, validation, test),
+        originals,
+        strict=True,
+    ):
+        pd.testing.assert_frame_equal(frame, original)
 
 
 def test_box_cox_plan_and_phase6_configuration_are_supported() -> None:

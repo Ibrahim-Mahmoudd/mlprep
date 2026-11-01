@@ -99,12 +99,38 @@ def test_full_pipeline_preserves_protected_partitions_and_handoff(
     )
     assert phase5_result.readiness is not None
     assert phase5_result.readiness.ready
-    phase6_result = Phase6().run(
+    phase6_runner = Phase6()
+    phase6_result = phase6_runner.run(
         phase5_result=phase5_result,
         authorized_test_partition=phase5_result.test,
     )
     assert phase6_result.readiness is not None
     assert phase6_result.readiness.ready
+    phase6_state = phase6_runner.state
+    assert phase6_state is not None
+    assert phase6_state.fitted_on_training_only
+    assert phase6_state.fitted_state_fingerprint
+    assert phase6_state.output_fingerprint
+    assert phase6_state.lineage is not None
+    assert phase6_state.lineage.output_columns == (
+        phase6_state.output_feature_columns
+    )
+    for column, numeric_state in phase6_state.numeric_states.items():
+        assert numeric_state.fitted_on_training_only
+        lineage_entry = phase6_state.lineage.entries[
+            numeric_state.output_column
+        ]
+        assert column in lineage_entry.source_columns
+        assert lineage_entry.fitted_on_training_only
+        for nested_state in (
+            numeric_state.transformation_state,
+            numeric_state.scaler_state,
+        ):
+            if nested_state is not None:
+                assert nested_state.fitted_on_training_only
+                assert nested_state.training_row_count == len(
+                    phase5_result.train.X
+                )
     phase7 = Phase7()
     phase7_result = phase7.run(
         phase6_result=phase6_result,
