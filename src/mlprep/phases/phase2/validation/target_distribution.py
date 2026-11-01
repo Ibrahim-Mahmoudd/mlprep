@@ -211,6 +211,9 @@ class TargetDistributionValidator:
                 )
 
         reference = train.y.dropna().astype(float)
+        reference = reference.loc[
+            reference.map(isfinite)
+        ]
 
         if reference.empty:
             return findings
@@ -226,6 +229,9 @@ class TargetDistributionValidator:
             target = partitions[
                 name
             ].y.dropna().astype(float)
+            target = target.loc[
+                target.map(isfinite)
+            ]
 
             if target.empty:
                 continue
