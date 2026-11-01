@@ -200,7 +200,7 @@ class HashingEncoder:
             dtype=self.options.output_dtype,
         )
 
-        for index, value in normalized.items():
+        for position, value in enumerate(normalized):
             bucket = self._bucket(
                 str(value)
             )
@@ -213,11 +213,9 @@ class HashingEncoder:
                 else 1.0
             )
 
-            output.at[
-                index,
-                self.state.output_columns[
-                    bucket
-                ],
+            output.iat[
+                position,
+                bucket,
             ] += sign
 
         return output
@@ -288,7 +286,7 @@ class HashingEncoder:
             f"{self.options.seed}"
             f"|{self.column}"
             f"|{value}"
-        ).encode("utf-8")
+        ).encode()
 
         digest = hashlib.blake2b(
             payload,
@@ -317,7 +315,7 @@ class HashingEncoder:
             f"|sign"
             f"|{self.column}"
             f"|{value}"
-        ).encode("utf-8")
+        ).encode()
 
         digest = hashlib.blake2b(
             payload,

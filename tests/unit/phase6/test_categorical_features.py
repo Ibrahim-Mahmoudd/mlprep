@@ -11,10 +11,12 @@ from mlprep.phases.phase6.categorical.categorical_pipeline import (
 from mlprep.phases.phase6.categorical.frequency_encoder import (
     FrequencyEncoder,
     FrequencyEncoderOptions,
+    FrequencyEncoderState,
 )
 from mlprep.phases.phase6.categorical.hashing_encoder import (
     HashingEncoder,
     HashingEncoderOptions,
+    HashingEncoderState,
 )
 from mlprep.phases.phase6.categorical.one_hot_encoder import (
     OneHotEncoder,
@@ -24,10 +26,12 @@ from mlprep.phases.phase6.categorical.one_hot_encoder import (
 from mlprep.phases.phase6.categorical.ordinal_encoder import (
     OrdinalEncoder,
     OrdinalEncoderOptions,
+    OrdinalEncoderState,
 )
 from mlprep.phases.phase6.categorical.rare_category_grouper import (
     RareCategoryGrouper,
     RareCategoryGrouperOptions,
+    RareCategoryGrouperState,
 )
 from mlprep.phases.phase6.contract.transformation_plan import (
     CategoricalEncodingKind,
@@ -37,6 +41,7 @@ from mlprep.phases.phase6.contract.transformation_plan import (
 )
 from mlprep.phases.phase6.feature_engineering.boolean_features import (
     BooleanFeatureOptions,
+    BooleanFeatureState,
     BooleanFeatureTransformer,
 )
 from mlprep.phases.phase6.feature_engineering.datetime_features import (
@@ -123,6 +128,36 @@ def test_one_hot_rejects_sanitized_output_name_collisions() -> None:
         )
 
 
+def test_one_hot_limits_high_cardinality_vocabulary_deterministically() -> None:
+    encoder = OneHotEncoder(
+        column="category",
+        options=OneHotEncoderOptions(
+            maximum_categories=2,
+            handle_unknown="indicator",
+        ),
+    ).fit(
+        pd.Series(
+            ["z", "a", "b", "a"],
+            name="category",
+        )
+    )
+
+    encoded = encoder.transform(
+        pd.Series(
+            ["a", "b", "z", "new"],
+            name="category",
+        )
+    )
+
+    assert encoder.state.categories == ["a", "b", "__UNKNOWN__"]
+    assert encoded.to_numpy().tolist() == [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+    ]
+
+
 def test_ordinal_and_frequency_encoders_use_fixed_training_mappings() -> None:
     training = pd.Series(
         ["low", "high", "low", None],
@@ -160,6 +195,86 @@ def test_ordinal_and_frequency_encoders_use_fixed_training_mappings() -> None:
     assert ordinal.state.fitted_on_training_only
     assert frequency.state.fitted_on_training_only
     assert training.equals(original)
+
+
+def test_ordinal_unknown_error_policy_rejects_unseen_values() -> None:
+    encoder = OrdinalEncoder(
+        column="level",
+        category_order=["low", "high"],
+        options=OrdinalEncoderOptions(
+            handle_unknown="error",
+        ),
+    ).fit(
+        pd.Series(["low", "high"], name="level")
+    )
+
+    with pytest.raises(ValueError, match="Unknown ordinal categories"):
+        encoder.transform(
+            pd.Series(["medium"], name="level")
+        )
+
+
+def test_ordinal_state_round_trip_preserves_explicit_order() -> None:
+    options = OrdinalEncoderOptions(
+        unknown_value=-9,
+        missing_value=-8,
+    )
+    encoder = OrdinalEncoder(
+        column="level",
+        category_order=["low", "medium", "high"],
+        options=options,
+    ).fit(
+        pd.Series(["low", "high"], name="level")
+    )
+    restored = OrdinalEncoder(
+        column="level",
+        category_order=["low", "medium", "high"],
+        options=options,
+    )
+    restored.state = OrdinalEncoderState.model_validate_json(
+        encoder.get_state().model_dump_json()
+    )
+
+    actual = restored.transform(
+        pd.Series(["high", "unknown", None], name="level")
+    )
+
+    assert actual["level__ordinal"].tolist() == [2, -9, -8]
+    assert restored.state.fitted_on_training_only
+
+
+def test_frequency_encoding_uses_training_frequencies_and_restores_state() -> None:
+    training = pd.Series(
+        ["a", "a", "b"],
+        index=[4, 5, 6],
+        name="category",
+    )
+    encoder = FrequencyEncoder(
+        column="category",
+    ).fit(training)
+    state = FrequencyEncoderState.model_validate_json(
+        encoder.get_state().model_dump_json()
+    )
+    restored = FrequencyEncoder(
+        column="category",
+    )
+    restored.state = state
+
+    actual = restored.transform(
+        pd.Series(
+            ["a", "b", "unseen"],
+            index=[10, 11, 12],
+            name="category",
+        )
+    )
+
+    assert actual["category__frequency"].tolist() == [
+        pytest.approx(2 / 3),
+        pytest.approx(1 / 3),
+        0.0,
+    ]
+    assert state.mapping == {"a": pytest.approx(2 / 3), "b": pytest.approx(1 / 3)}
+    assert state.training_row_count == 3
 
 
 def test_hashing_is_deterministic_and_keeps_fixed_schema() -> None:
@@ -200,6 +315,51 @@ def test_hashing_is_deterministic_and_keeps_fixed_schema() -> None:
     assert training.equals(original)
 
 
+def test_hashing_state_round_trip_preserves_duplicate_index_behavior() -> None:
+    training = pd.Series(
+        ["alpha", "beta"],
+        index=[1, 1],
+        name="token",
+    )
+    options = HashingEncoderOptions(bucket_count=8)
+    encoder = HashingEncoder(
+        column="token",
+        options=options,
+    ).fit(training)
+    restored = HashingEncoder(
+        column="token",
+        options=options,
+    )
+    restored.state = HashingEncoderState.model_validate_json(
+        encoder.get_state().model_dump_json()
+    )
+
+    expected = encoder.transform(training)
+    actual = restored.transform(training)
+
+    pd.testing.assert_frame_equal(actual, expected)
+    assert actual.sum(axis=1).tolist() == [1.0, 1.0]
+
+
+def test_hashing_preserves_rows_with_duplicate_index_labels() -> None:
+    training = pd.Series(
+        ["alpha", "beta"],
+        index=[1, 1],
+        name="token",
+    )
+    encoder = HashingEncoder(
+        column="token",
+        options=HashingEncoderOptions(
+            bucket_count=8,
+        ),
+    ).fit(training)
+
+    encoded = encoder.transform(training)
+
+    assert encoded.index.tolist() == [1, 1]
+    assert encoded.sum(axis=1).tolist() == [1.0, 1.0]
+
+
 def test_rare_category_grouper_preserves_missing_and_groups_unseen_values() -> None:
     training = pd.Series(
         ["common", "common", "rare", None],
@@ -231,6 +391,32 @@ def test_rare_category_grouper_preserves_missing_and_groups_unseen_values() -> N
     assert grouper.state.fitted_on_training_only
     assert transformed.index.tolist() == [10, 11, 12, 13]
     assert training.equals(original)
+
+
+def test_rare_category_state_round_trip_preserves_training_vocabulary() -> None:
+    training = pd.Series(
+        ["common", "common", "rare"],
+        name="segment",
+    )
+    options = RareCategoryGrouperOptions(minimum_count=2)
+    grouper = RareCategoryGrouper(
+        column="segment",
+        options=options,
+    ).fit(training)
+    restored = RareCategoryGrouper(
+        column="segment",
+        options=options,
+    )
+    restored.state = RareCategoryGrouperState.model_validate_json(
+        grouper.get_state().model_dump_json()
+    )
+
+    actual = restored.transform(
+        pd.Series(["common", "rare", "new"], name="segment")
+    )
+
+    assert actual.tolist() == ["common", "__RARE__", "__RARE__"]
+    assert restored.state.fitted_on_training_only
 
 
 def test_categorical_pipeline_keeps_train_schema_and_reports_unknowns() -> None:
@@ -294,6 +480,34 @@ def test_categorical_pipeline_keeps_train_schema_and_reports_unknowns() -> None:
     assert np.isfinite(result.frame.to_numpy(dtype=float)).all()
 
 
+def test_categorical_pipeline_rejects_cross_feature_name_collisions() -> None:
+    training = pd.DataFrame(
+        {
+            "first": ["same", "other"],
+            "second": ["same", "other"],
+        }
+    )
+    plan = TransformationPlan(
+        entries={
+            column: TransformationPlanEntry(
+                column=column,
+                feature_family=FeatureFamily.CATEGORICAL,
+                categorical_encoding=CategoricalEncodingKind.ONE_HOT,
+                output_prefix="shared",
+                reason="one-hot feature",
+            )
+            for column in ["first", "second"]
+        },
+        categorical_columns=["first", "second"],
+    )
+
+    with pytest.raises(ValueError, match="output-column collision"):
+        CategoricalPipeline().fit(
+            frame=training,
+            plan=plan,
+        )
+
+
 def test_boolean_normalization_handles_vocabularies_and_missing_by_policy() -> None:
     training = pd.Series(
         [" YES ", "no", "true", "0"],
@@ -324,6 +538,51 @@ def test_boolean_normalization_handles_vocabularies_and_missing_by_policy() -> N
     assert missing.transform(
         pd.Series([None], name="active")
     ).iloc[0, 0] == -7
+
+
+def test_boolean_unknown_values_follow_configured_policy() -> None:
+    transformer = BooleanFeatureTransformer(
+        column="active",
+        options=BooleanFeatureOptions(
+            unknown_policy="use_value",
+            unknown_value=9,
+            missing_policy="use_value",
+            missing_value=-7,
+        ),
+    ).fit(
+        pd.Series(["yes", "maybe", None], name="active")
+    )
+
+    result = transformer.transform(
+        pd.Series(["yes", "maybe", None], name="active")
+    )
+
+    assert result["active__boolean"].tolist() == [1, 9, -7]
+    assert transformer.state.training_unknown_count == 1
+
+
+def test_boolean_state_round_trip_preserves_normalization() -> None:
+    options = BooleanFeatureOptions()
+    transformer = BooleanFeatureTransformer(
+        column="active",
+        options=options,
+    ).fit(
+        pd.Series(["yes", "no"], name="active")
+    )
+    restored = BooleanFeatureTransformer(
+        column="active",
+        options=options,
+    )
+    restored.state = BooleanFeatureState.model_validate_json(
+        transformer.get_state().model_dump_json()
+    )
+
+    actual = restored.transform(
+        pd.Series([" TRUE ", "N"], name="active")
+    )
+
+    assert actual["active__boolean"].tolist() == [1, 0]
+    assert restored.state.fitted_on_training_only
 
 
 def test_text_features_are_structural_finite_and_restore_from_state() -> None:
