@@ -162,6 +162,9 @@ def test_resampling_strategies_support_binary_and_multiclass(
     sampler_name: str,
 ) -> None:
     features, target, row_ids = _training_data(class_counts)
+    original_features = features.copy(deep=True)
+    original_target = target.copy(deep=True)
+    original_row_ids = row_ids.copy(deep=True)
     sampler = dict(_samplers(random_seed=17))[sampler_name]
 
     result = _sample(
@@ -177,19 +180,41 @@ def test_resampling_strategies_support_binary_and_multiclass(
     assert len(result.state.class_counts_before) == len(class_counts)
     assert len(result.row_lineage) == len(result.features)
     assert result.row_ids.is_unique
+    pd.testing.assert_frame_equal(features, original_features)
+    pd.testing.assert_series_equal(target, original_target)
+    pd.testing.assert_series_equal(row_ids, original_row_ids)
     assert {
         record.output_position for record in result.row_lineage
     } == set(range(len(result.features)))
+    for record in result.row_lineage:
+        assert record.output_row_id == result.row_ids.iloc[
+            record.output_position
+        ]
     if sampler_name == "random_undersampling":
         assert result.removed_rows
         assert result.state.removed_original_count == len(result.removed_rows)
+        removed_ids = {record.row_id for record in result.removed_rows}
+        assert removed_ids.isdisjoint(set(result.row_ids))
+        assert removed_ids.issubset(set(row_ids))
     elif sampler_name == "random_oversampling":
         assert any(
             record.row_type == ResampledRowType.DUPLICATE
             for record in result.row_lineage
         )
     else:
-        assert any(record.synthetic for record in result.row_lineage)
+        synthetic_records = [
+            record
+            for record in result.row_lineage
+            if record.synthetic
+        ]
+        assert synthetic_records
+        assert all(
+            record.row_type == ResampledRowType.SYNTHETIC
+            for record in synthetic_records
+        )
+        assert {
+            record.output_row_id for record in synthetic_records
+        }.isdisjoint(set(row_ids))
 
 
 @pytest.mark.parametrize(
@@ -292,6 +317,33 @@ def test_random_oversampling_respects_custom_target_counts() -> None:
     )
 
     assert Counter(result.target.tolist()) == {0: 60, 1: 25}
+
+
+def test_random_undersampling_respects_custom_target_counts_and_lineage() -> None:
+    features, target, row_ids = _training_data((60, 20))
+    sampler = RandomUnderSampler(
+        sampling_strategy={
+            class_key(0): 45,
+            class_key(1): 15,
+        },
+        random_seed=29,
+    )
+
+    result = _sample(
+        sampler,
+        features=features,
+        target=target,
+        row_ids=row_ids,
+    )
+
+    assert Counter(result.target.tolist()) == {0: 45, 1: 15}
+    assert result.state.removed_original_count == 20
+    assert len(result.removed_rows) == 20
+    for removed in result.removed_rows:
+        assert removed.row_id == row_ids.iloc[removed.source_position]
+        assert removed.class_value == target.iloc[removed.source_position]
+        assert removed.stage == "random_undersampling"
+        assert removed.reason
 
 
 def _pipeline_contract(
@@ -452,7 +504,17 @@ def test_balancing_pipeline_preserves_validation_and_test_partitions() -> None:
     pd.testing.assert_series_equal(contract.test.y, test_before.y)
     pd.testing.assert_series_equal(contract.test.row_ids, test_before.row_ids)
     pd.testing.assert_frame_equal(validation_output.X, validation_before.X)
+    pd.testing.assert_series_equal(validation_output.y, validation_before.y)
+    pd.testing.assert_series_equal(
+        validation_output.row_ids,
+        validation_before.row_ids,
+    )
     pd.testing.assert_frame_equal(test_output.X, test_before.X)
+    pd.testing.assert_series_equal(test_output.y, test_before.y)
+    pd.testing.assert_series_equal(
+        test_output.row_ids,
+        test_before.row_ids,
+    )
     assert result.validation_remained_protected
     assert result.test_remained_protected
     assert not result.validation_resampled
@@ -510,4 +572,36 @@ def test_synthetic_sampler_rejects_unauthorized_execution(
             resampling_authorized=resampling_authorized,
             target_access_authorized=target_access_authorized,
             synthetic_generation_authorized=synthetic_generation_authorized,
+        )
+
+
+@pytest.mark.parametrize(
+    "sampler",
+    [
+        RandomOverSampler(random_seed=13),
+        RandomUnderSampler(random_seed=13),
+    ],
+)
+@pytest.mark.parametrize(
+    ("resampling_authorized", "target_access_authorized", "message"),
+    [
+        (False, True, "not authorized"),
+        (True, False, "Training-target access"),
+    ],
+)
+def test_non_synthetic_samplers_reject_unauthorized_execution(
+    sampler,
+    resampling_authorized: bool,
+    target_access_authorized: bool,
+    message: str,
+) -> None:
+    features, target, row_ids = _training_data((60, 20))
+    with pytest.raises(PermissionError, match=message):
+        sampler.fit_resample(
+            features=features,
+            target=target,
+            row_ids=row_ids,
+            context=SamplerExecutionContext.TRAINING_RESAMPLING,
+            resampling_authorized=resampling_authorized,
+            target_access_authorized=target_access_authorized,
         )
