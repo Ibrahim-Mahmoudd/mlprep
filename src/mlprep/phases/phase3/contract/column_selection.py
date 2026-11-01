@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from numbers import Number
 
 import pandas as pd
 from pandas.api.types import (
@@ -11,7 +12,6 @@ from pandas.api.types import (
     is_datetime64_any_dtype,
     is_numeric_dtype,
     is_object_dtype,
-    is_string_dtype,
     is_timedelta64_dtype,
 )
 
@@ -313,15 +313,10 @@ class ColumnSelector:
                 if (
                     ColumnRole.INTERNAL
                     in column_state.roles
+                    and not self.options.include_internal_columns
                 ):
-                    if not (
-                        self.options
-                        .include_internal_columns
-                    ):
-                        groups.ignored.append(
-                            column
-                        )
-                        continue
+                    groups.ignored.append(column)
+                    continue
 
                 if (
                     ColumnRole.IDENTIFIER
@@ -544,9 +539,6 @@ class ColumnSelector:
         if is_categorical_dtype(dtype):
             return "categorical"
 
-        if is_string_dtype(dtype):
-            return "text"
-
         if is_object_dtype(dtype):
             return None
 
@@ -575,7 +567,7 @@ class ColumnSelector:
         if nonmissing.map(
             lambda value: isinstance(
                 value,
-                (int, float),
+                Number,
             )
             and not isinstance(value, bool)
         ).all():
