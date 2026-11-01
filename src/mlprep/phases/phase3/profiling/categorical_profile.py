@@ -285,7 +285,7 @@ class CategoricalProfiler:
         )
 
         normalized_entropy = (
-            entropy / maximum_entropy
+            min(1.0, entropy / maximum_entropy)
             if maximum_entropy > 0
             else 0.0
         )
