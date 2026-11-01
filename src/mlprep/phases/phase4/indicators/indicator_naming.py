@@ -162,8 +162,26 @@ class IndicatorNameResolver:
                 )
             )
 
-            alternative = self._truncate(
-                f"{candidate}{collision_suffix}"
+            maximum_name_length = (
+                self.options.maximum_name_length
+            )
+
+            if maximum_name_length is not None:
+                collision_suffix = collision_suffix[
+                    -maximum_name_length:
+                ]
+
+                candidate_prefix = candidate[
+                    : maximum_name_length
+                    - len(collision_suffix)
+                ]
+
+            else:
+                candidate_prefix = candidate
+
+            alternative = (
+                f"{candidate_prefix}"
+                f"{collision_suffix}"
             )
 
             if alternative not in unavailable:
