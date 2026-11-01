@@ -58,7 +58,12 @@ class DatetimeFeatureState(BaseModel):
 
 @dataclass(slots=True)
 class DatetimeFeatureOptions:
-    """Options controlling datetime feature extraction."""
+    """Options controlling datetime feature extraction.
+
+    Cyclical features encode hour (period 24), weekday (period 7), or
+    month (period 12) using sine/cosine pairs. They remain floating-point
+    even when ``output_dtype="int64"`` is selected.
+    """
 
     features: list[str] = field(
         default_factory=lambda: [
@@ -113,6 +118,12 @@ class DatetimeFeatureOptions:
             "is_month_end",
             "elapsed_seconds",
             "elapsed_days",
+            "hour_sin",
+            "hour_cos",
+            "day_of_week_sin",
+            "day_of_week_cos",
+            "month_sin",
+            "month_cos",
         }
 
         unsupported = set(
@@ -508,6 +519,50 @@ class DatetimeFeatureExtractor:
             values = (
                 parsed - reference
             ).dt.total_seconds() / 86400.0
+
+        elif feature in {
+            "hour_sin",
+            "hour_cos",
+            "day_of_week_sin",
+            "day_of_week_cos",
+            "month_sin",
+            "month_cos",
+        }:
+            component, function = feature.rsplit(
+                "_",
+                maxsplit=1,
+            )
+            component_values, period = {
+                "hour": (
+                    parsed.dt.hour,
+                    24,
+                ),
+                "day_of_week": (
+                    parsed.dt.dayofweek,
+                    7,
+                ),
+                "month": (
+                    parsed.dt.month - 1,
+                    12,
+                ),
+            }[component]
+            angle = (
+                2.0
+                * np.pi
+                * component_values
+                / period
+            )
+            values = (
+                np.sin(angle)
+                if function == "sin"
+                else np.cos(angle)
+            )
+
+            return values.astype(
+                self.options.output_dtype
+                if self.options.output_dtype != "int64"
+                else "float64"
+            )
 
         else:
             raise ValueError(
