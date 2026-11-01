@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from mlprep.phases.phase2.output_governance.result import (
+    LockedTestPartition,
     Phase2Result,
 )
 from mlprep.phases.phase2.output_governance.state import (
@@ -154,6 +155,11 @@ class Phase2ReportBuilder:
             if readiness is not None
             else False
         )
+        test_row_count = (
+            result.test.row_count
+            if isinstance(result.test, LockedTestPartition)
+            else result.test.row_count()
+        )
 
         lines = [
             "Phase 2 Report",
@@ -174,7 +180,7 @@ class Phase2ReportBuilder:
             ),
             (
                 f"Test rows: "
-                f"{result.test.row_count}"
+                f"{test_row_count}"
             ),
             (
                 f"Feature count: "
