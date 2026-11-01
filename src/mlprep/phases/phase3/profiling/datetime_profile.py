@@ -45,19 +45,19 @@ class DatetimeColumnProfile(BaseModel):
     duration_seconds: float | None = None
 
     most_frequent_years: list[
-        dict[str, int]
+        dict[str, int | str]
     ] = Field(default_factory=list)
 
     most_frequent_months: list[
-        dict[str, int]
+        dict[str, int | str]
     ] = Field(default_factory=list)
 
     most_frequent_weekdays: list[
-        dict[str, int]
+        dict[str, int | str]
     ] = Field(default_factory=list)
 
     most_frequent_hours: list[
-        dict[str, int]
+        dict[str, int | str]
     ] = Field(default_factory=list)
 
     median_interval_seconds: float | None = None
