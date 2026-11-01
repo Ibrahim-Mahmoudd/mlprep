@@ -5,6 +5,10 @@ from mlprep.phases.phase6.numeric.base import (
     NumericExecutionMode,
     NumericTransformerState,
 )
+from mlprep.phases.phase6.numeric.box_cox_transformer import (
+    BoxCoxTransformer,
+    BoxCoxTransformerOptions,
+)
 from mlprep.phases.phase6.numeric.log_transformer import (
     LogTransformer,
     LogTransformerOptions,
@@ -34,6 +38,8 @@ from mlprep.phases.phase6.numeric.standard_scaler import (
 
 __all__ = [
     "BaseNumericTransformer",
+    "BoxCoxTransformer",
+    "BoxCoxTransformerOptions",
     "LogTransformer",
     "LogTransformerOptions",
     "MinMaxScaler",

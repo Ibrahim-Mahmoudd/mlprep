@@ -36,6 +36,7 @@ class NumericTransformationKind(StrEnum):
     NONE = "none"
     LOG1P = "log1p"
     SIGNED_LOG1P = "signed_log1p"
+    BOX_COX = "box_cox"
     YEO_JOHNSON = "yeo_johnson"
 
 
@@ -658,7 +659,10 @@ class TransformationPlanBuilder:
                 output_prefix=output_prefix,
                 requires_training_fit=(
                     transformation
-                    == NumericTransformationKind.YEO_JOHNSON
+                    in {
+                        NumericTransformationKind.BOX_COX,
+                        NumericTransformationKind.YEO_JOHNSON,
+                    }
                     or scaling
                     != NumericScalingKind.NONE
                 ),

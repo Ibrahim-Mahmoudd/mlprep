@@ -37,6 +37,7 @@ from mlprep.phases.phase6.feature_engineering import (
     TextFeatureOptions,
 )
 from mlprep.phases.phase6.numeric import (
+    BoxCoxTransformerOptions,
     LogTransformerOptions,
     MinMaxScalerOptions,
     NumericPipelineOptions,
@@ -423,6 +424,15 @@ class Phase6ConfigLoader:
                         {},
                     ),
                     "numeric.power",
+                )
+            ),
+            box_cox=BoxCoxTransformerOptions(
+                **cls._mapping(
+                    data.pop(
+                        "box_cox",
+                        {},
+                    ),
+                    "numeric.box_cox",
                 )
             ),
             standard=StandardScalerOptions(

@@ -19,6 +19,10 @@ from mlprep.phases.phase6.numeric.base import (
     NumericExecutionMode,
     NumericTransformerState,
 )
+from mlprep.phases.phase6.numeric.box_cox_transformer import (
+    BoxCoxTransformer,
+    BoxCoxTransformerOptions,
+)
 from mlprep.phases.phase6.numeric.log_transformer import (
     LogTransformer,
     LogTransformerOptions,
@@ -103,6 +107,10 @@ class NumericPipelineOptions:
 
     power: PowerTransformerOptions = field(
         default_factory=PowerTransformerOptions
+    )
+
+    box_cox: BoxCoxTransformerOptions = field(
+        default_factory=BoxCoxTransformerOptions
     )
 
     standard: StandardScalerOptions = field(
@@ -320,7 +328,7 @@ class NumericPipeline:
             index=frame.index
         )
 
-        for column, entry in (
+        for column, _entry in (
             self.entries.items()
         ):
             if column not in frame.columns:
@@ -504,6 +512,12 @@ class NumericPipeline:
             return PowerTransformer(
                 column=entry.column,
                 options=self.options.power,
+            )
+
+        if method == NumericTransformationKind.BOX_COX:
+            return BoxCoxTransformer(
+                column=entry.column,
+                options=self.options.box_cox,
             )
 
         raise ValueError(
