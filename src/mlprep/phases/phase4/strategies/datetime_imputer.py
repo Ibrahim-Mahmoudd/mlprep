@@ -7,10 +7,7 @@ from typing import Literal
 
 import pandas as pd
 
-from mlprep.phases.phase4.strategies.base import (
-    BaseImputer,
-)
-
+from mlprep.phases.phase4.strategies.base import BaseImputer
 
 DatetimeImputationMethod = Literal[
     "median",
@@ -98,15 +95,7 @@ class DatetimeImputer(BaseImputer):
             )
 
         elif self.options.method == "median":
-            integer_values = valid.astype(
-                "int64"
-            )
-
-            learned = pd.Timestamp(
-                int(
-                    integer_values.median()
-                )
-            )
+            learned = pd.Timestamp(valid.median())
 
         elif self.options.method == "most_frequent":
             counts = valid.value_counts()
