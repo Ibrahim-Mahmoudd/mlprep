@@ -22,6 +22,7 @@ from mlprep.phases.phase2.output_governance.result import (
     SplitFinding,
 )
 from mlprep.phases.phase2.strategies.base import (
+    StrategyOutput,
     StrategyPartitions,
 )
 from mlprep.phases.phase2.strategies.time_split import (
@@ -103,6 +104,69 @@ class PurgedTimeSplitStrategy(
                 ),
                 require_strict_temporal_order=True,
             )
+        )
+
+    def split(
+        self,
+        contract: SplitContract,
+    ) -> StrategyOutput:
+        """Execute the split while allowing rows removed by purge gaps."""
+
+        self.validate_contract(
+            contract
+        )
+
+        indices = self.create_indices(
+            contract
+        )
+        indices.validate_disjoint()
+
+        unexpected_indices = set(
+            indices.all_indices().tolist()
+        ).difference(
+            contract.data.index.tolist()
+        )
+
+        if unexpected_indices:
+            examples = list(
+                unexpected_indices
+            )[:10]
+
+            raise ValueError(
+                "The purged split contains indices absent from "
+                f"the source dataset. Examples: {examples}"
+            )
+
+        train = self._build_partition(
+            name=PartitionName.TRAIN,
+            indices=indices.train_indices,
+            contract=contract,
+        )
+        validation = self._build_partition(
+            name=PartitionName.VALIDATION,
+            indices=indices.validation_indices,
+            contract=contract,
+        )
+        test = self._build_partition(
+            name=PartitionName.TEST,
+            indices=indices.test_indices,
+            contract=contract,
+        )
+
+        return StrategyOutput(
+            strategy=self.strategy_name,
+            train=train,
+            validation=validation,
+            test=test,
+            indices=indices,
+            findings=self.create_findings(
+                contract=contract,
+                indices=indices,
+            ),
+            metadata=self.create_metadata(
+                contract=contract,
+                indices=indices,
+            ),
         )
 
     def create_indices(
