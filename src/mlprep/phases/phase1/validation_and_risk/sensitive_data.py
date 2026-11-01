@@ -23,7 +23,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 _EMAIL_PATTERN = re.compile(
     r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 )
@@ -179,6 +178,14 @@ class SensitiveDataDetector:
                 )
             )
 
+        if self.options.detect_payment_cards:
+            detectors.append(
+                (
+                    "payment_card",
+                    self._looks_like_payment_card,
+                )
+            )
+
         if self.options.detect_phone_numbers:
             detectors.append(
                 (
@@ -196,14 +203,6 @@ class SensitiveDataDetector:
                     lambda value: bool(
                         _URL_PATTERN.fullmatch(value)
                     ),
-                )
-            )
-
-        if self.options.detect_payment_cards:
-            detectors.append(
-                (
-                    "payment_card",
-                    self._looks_like_payment_card,
                 )
             )
 
