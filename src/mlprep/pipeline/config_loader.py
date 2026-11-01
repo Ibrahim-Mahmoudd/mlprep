@@ -56,6 +56,7 @@ class MLPrepConfigLoader:
             "phase7",
             "phase8",
             "phase9",
+            "config_version",
             "schema_version",
             "cross_validation",
             "pipeline",
@@ -141,6 +142,15 @@ class MLPrepConfigLoader:
                 f"{sorted(unknown)}"
             )
 
+        if (
+            "config_version" in values
+            and "schema_version" in values
+            and values["config_version"] != values["schema_version"]
+        ):
+            raise ValueError(
+                "config_version conflicts with the legacy schema_version."
+            )
+
         missing = {"phase1", "phase2"}.difference(values)
         if missing:
             raise ValueError(
@@ -204,7 +214,10 @@ class MLPrepConfigLoader:
             phase7=phase7,
             phase8=phase8,
             phase9=phase9,
-            schema_version=values.get("schema_version", "1"),
+            schema_version=values.get(
+                "config_version",
+                values.get("schema_version", "1"),
+            ),
             cross_validation=cross_validation,
             pipeline=pipeline_options,
         )

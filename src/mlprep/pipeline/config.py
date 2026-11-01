@@ -105,7 +105,7 @@ class MLPrepConfig(MLPrepPipelineConfig):
         MLPrepPipelineConfig.__post_init__(self)
         if self.schema_version != "1":
             raise ValueError(
-                f"Unsupported MLPrep config schema version: "
+                f"Unsupported MLPrep config version: "
                 f"{self.schema_version!r}."
             )
         if not isinstance(self.cross_validation, CrossValidationConfig):
@@ -136,6 +136,12 @@ class MLPrepConfig(MLPrepPipelineConfig):
         )
 
     @property
+    def config_version(self) -> str:
+        """Return the canonical configuration version."""
+
+        return self.schema_version
+
+    @property
     def resolved_configuration(self) -> dict[str, object]:
         """Return the full configuration in the public flat schema."""
 
@@ -144,7 +150,7 @@ class MLPrepConfig(MLPrepPipelineConfig):
         )
 
         config: dict[str, object] = {
-            "schema_version": self.schema_version,
+            "config_version": self.config_version,
         }
         for phase_number in range(1, 10):
             phase_name = f"phase{phase_number}"

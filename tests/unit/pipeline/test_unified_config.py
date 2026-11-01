@@ -43,11 +43,12 @@ def test_scenario_configurations_resolve(
 
     assert isinstance(config, MLPrepConfig)
     assert config.schema_version == "1"
+    assert config.config_version == "1"
     assert config.phase1.problem_contract.task_type == expected_task
     assert config.cross_validation.strategy.value == expected_cv
     assert set(config.resolved_configuration) == {
         *(f"phase{number}" for number in range(1, 10)),
-        "schema_version",
+        "config_version",
         "cross_validation",
         "pipeline",
     }
@@ -137,11 +138,40 @@ def test_unified_config_fingerprint_and_report_do_not_expose_values(
     assert "secret-config-marker" not in report
 
 
-def test_unsupported_schema_and_invalid_environment_yaml_are_rejected() -> None:
-    with pytest.raises(ValueError, match="Unsupported MLPrep config schema"):
+def test_config_version_alias_and_conflicts_are_validated() -> None:
+    config = MLPrepConfigLoader.from_dict(
+        {
+            "phase1": yaml.safe_load(
+                (_CONFIG_DIRECTORY / "default.yaml").read_text(
+                    encoding="utf-8"
+                )
+            )["phase1"],
+            "phase2": yaml.safe_load(
+                (_CONFIG_DIRECTORY / "default.yaml").read_text(
+                    encoding="utf-8"
+                )
+            )["phase2"],
+            "schema_version": "1",
+        }
+    )
+    assert config.config_version == "1"
+    assert "config_version" in config.to_dict()
+    assert "schema_version" not in config.to_dict()
+
+    with pytest.raises(ValueError, match="conflicts with the legacy"):
+        MLPrepConfigLoader.from_dict(
+            {
+                "phase1": {},
+                "phase2": {},
+                "config_version": "1",
+                "schema_version": "2",
+            }
+        )
+
+    with pytest.raises(ValueError, match="Unsupported MLPrep config version"):
         MLPrepConfigLoader.load(
             _CONFIG_DIRECTORY / "default.yaml",
-            dotted_overrides={"schema_version": "2"},
+            dotted_overrides={"config_version": "2"},
         )
 
     with pytest.raises(ValueError, match="Invalid YAML value"):
@@ -153,3 +183,18 @@ def test_unsupported_schema_and_invalid_environment_yaml_are_rejected() -> None:
                 )
             },
         )
+
+
+def test_legacy_schema_version_is_accepted_and_emits_config_version() -> None:
+    source = yaml.safe_load(
+        (_CONFIG_DIRECTORY / "default.yaml").read_text(encoding="utf-8")
+    )
+    source["schema_version"] = "1"
+    source.pop("config_version")
+
+    config = MLPrepConfigLoader.from_dict(source)
+
+    assert config.schema_version == "1"
+    assert config.config_version == "1"
+    assert config.resolved_configuration["config_version"] == "1"
+    assert "schema_version" not in config.resolved_configuration
