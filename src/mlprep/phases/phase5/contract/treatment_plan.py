@@ -108,6 +108,7 @@ class TreatmentPlanEntry(BaseModel):
             if (
                 self.domain_minimum is None
                 and self.domain_maximum is None
+                and self.status == TreatmentPlanStatus.PLANNED
             ):
                 raise ValueError(
                     "Domain detection requires at least "
@@ -129,6 +130,7 @@ class TreatmentPlanEntry(BaseModel):
             self.treatment
             == TreatmentKind.SET_MISSING
             and self.set_missing_fallback is None
+            and self.status == TreatmentPlanStatus.PLANNED
         ):
             raise ValueError(
                 "set_missing treatment requires an explicit "
