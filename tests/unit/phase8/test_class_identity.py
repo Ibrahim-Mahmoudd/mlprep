@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import UTC, date, datetime
+from decimal import Decimal
+from enum import Enum
 
 import numpy as np
 import pandas as pd
@@ -44,8 +47,17 @@ from mlprep.phases.phase8.samplers import (
     SamplerRowRecord,
 )
 from mlprep.phases.phase8.utils.class_identity import (
+    build_class_identity,
     build_class_identity_mapping,
+    class_display_value,
     class_key,
+    class_type_name,
+    class_values_equal,
+    normalize_class_value,
+    resolve_class_count_mapping,
+    resolve_class_weight_mapping,
+    serialize_class_value,
+    validate_class_identity_mapping,
 )
 from mlprep.phases.phase8.weighting import (
     ClassWeightCalculator,
@@ -457,6 +469,174 @@ def test_class_identity_mapping_survives_phase_state_round_trip() -> None:
         class_key(1.0): float,
         class_key(True): bool,
     }
+
+
+class _TargetClass(Enum):
+    ACTIVE = "active"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected_type", "expected_display"),
+    [
+        (None, "none", "<missing>"),
+        (False, "bool", "False"),
+        (12, "int", "12"),
+        (1.25, "float", "1.25"),
+        (Decimal("2.50"), "decimal", "2.50"),
+        ("label", "str", "label"),
+        (b"label", "bytes", "bGFiZWw="),
+        (date(2024, 2, 3), "date", "2024-02-03"),
+        (
+            datetime(2024, 2, 3, 4, 5, tzinfo=UTC),
+            "datetime",
+            "2024-02-03T04:05:00+00:00",
+        ),
+    ],
+)
+def test_class_identity_supports_builtin_scalar_types(
+    value,
+    expected_type: str,
+    expected_display: str,
+) -> None:
+    identity = build_class_identity(value)
+
+    assert identity.type_name == expected_type
+    assert identity.display_value == expected_display
+    assert identity.key == class_key(value)
+    assert identity.serialized_value == serialize_class_value(value)
+    assert class_type_name(value) == expected_type
+    assert class_display_value(value) == expected_display
+
+
+def test_class_identity_supports_enums_and_normalizes_numpy_or_missing_values() -> None:
+    enum_identity = build_class_identity(_TargetClass.ACTIVE)
+
+    assert enum_identity.type_name.endswith("._TargetClass")
+    assert enum_identity.display_value == "_TargetClass.ACTIVE"
+    assert '"kind":"enum"' in enum_identity.serialized_value
+    assert normalize_class_value(np.int32(7)) == 7
+    assert type(normalize_class_value(np.int32(7))) is int
+    assert normalize_class_value(pd.NA) is None
+    assert normalize_class_value(pd.NaT) is None
+    assert normalize_class_value(float("nan")) is None
+    assert normalize_class_value(Decimal("NaN")) is None
+    assert normalize_class_value(bytearray(b"abc")) == b"abc"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [float("inf"), Decimal("Infinity"), object()],
+)
+def test_class_identity_rejects_non_finite_or_unsupported_values(value) -> None:
+    with pytest.raises((TypeError, ValueError)):
+        serialize_class_value(value)
+
+
+def test_class_identity_mapping_resolves_typed_and_legacy_labels() -> None:
+    identities = build_class_identity_mapping([1, "1", 1.0, True])
+
+    assert identities.key_for(np.int64(1)) == class_key(1)
+    assert identities.value_for(class_key("1")) == "1"
+    assert identities.identity_for_value(True).key == class_key(True)
+    assert identities.identity_for_key(class_key(1)).value == 1
+    assert identities.resolve_configured_key(class_key(1.0)) == class_key(1.0)
+    assert identities.resolve_configured_key("int::1") == class_key(1)
+    assert identities.contains_key(class_key(True))
+    assert identities.contains_value(np.bool_(True))
+    assert not identities.contains_value("unknown")
+    assert identities.class_key_to_value[class_key("1")] == "1"
+    assert identities.class_key_to_display_value[class_key(1.0)] == "1.0"
+
+    with pytest.raises(KeyError, match="Unknown configured"):
+        identities.resolve_configured_key("absent")
+    with pytest.raises(KeyError, match="Unknown Phase 8 class key"):
+        identities.value_for("absent")
+    with pytest.raises(KeyError, match="not registered"):
+        identities.key_for("absent")
+
+
+def test_class_identity_mapping_validates_counts_and_weights() -> None:
+    identities = build_class_identity_mapping(["minority", "majority"])
+    keys = identities.class_order
+
+    assert resolve_class_count_mapping(
+        {keys[0]: 4, keys[1]: 6},
+        identity_mapping=identities,
+        require_all_classes=True,
+    ) == {"minority": 4, "majority": 6}
+    assert resolve_class_weight_mapping(
+        {keys[0]: 2.0, keys[1]: 1.0},
+        identity_mapping=identities,
+        require_all_classes=True,
+    ) == {"minority": 2.0, "majority": 1.0}
+    assert identities.resolve_count_mapping(
+        {"unknown": 2},
+        reject_unknown_classes=False,
+    ) == {}
+    assert identities.resolve_weight_mapping(
+        {"unknown": 2.0},
+        reject_unknown_classes=False,
+    ) == {}
+
+    with pytest.raises(ValueError, match="positive"):
+        identities.resolve_count_mapping({keys[0]: 0})
+    with pytest.raises(KeyError, match="unknown keys"):
+        identities.resolve_count_mapping({"unknown": 2})
+    with pytest.raises(KeyError, match="missing keys"):
+        identities.resolve_count_mapping({keys[0]: 2}, require_all_classes=True)
+    with pytest.raises(ValueError, match="finite and positive"):
+        identities.resolve_weight_mapping({keys[0]: float("inf")})
+    with pytest.raises(KeyError, match="unknown keys"):
+        identities.resolve_weight_mapping({"unknown": 2.0})
+    with pytest.raises(KeyError, match="missing keys"):
+        identities.resolve_weight_mapping({keys[0]: 2.0}, require_all_classes=True)
+
+
+def test_class_identity_mapping_rejects_missing_single_class_and_corruption() -> None:
+    with pytest.raises(ValueError, match="missing values"):
+        build_class_identity_mapping([1, None])
+    assert build_class_identity_mapping(
+        [1, None],
+        reject_missing=False,
+    ).class_order == [class_key(1)]
+    with pytest.raises(ValueError, match="At least two"):
+        build_class_identity_mapping([1, 1], require_at_least_two_classes=True)
+
+    mapping = build_class_identity_mapping([1, 2])
+    validate_class_identity_mapping(mapping)
+    mapping.class_order = [class_key(1), class_key(1)]
+    with pytest.raises(ValueError, match="duplicate"):
+        validate_class_identity_mapping(mapping)
+
+    mapping = build_class_identity_mapping([1, 2])
+    mapping.class_order = ["missing"]
+    with pytest.raises(ValueError, match="unknown identity"):
+        validate_class_identity_mapping(mapping)
+
+    mapping = build_class_identity_mapping([1])
+    mapping.identities["extra"] = mapping.identities[class_key(1)].model_copy(
+        update={"key": "extra"}
+    )
+    with pytest.raises(ValueError, match="absent from class_order"):
+        validate_class_identity_mapping(mapping)
+
+    mapping = build_class_identity_mapping([1])
+    invalid_identity = mapping.identities[class_key(1)].model_copy(
+        update={"key": "invalid"}
+    )
+    mapping.class_order = ["invalid"]
+    mapping.identities = {"invalid": invalid_identity}
+    with pytest.raises(ValueError, match="invalid key"):
+        validate_class_identity_mapping(mapping)
+
+
+def test_class_value_equality_requires_matching_types_and_scalar_comparison() -> None:
+    assert class_values_equal(np.int32(1), 1)
+    assert not class_values_equal(1, True)
+    assert not class_values_equal(1, 1.0)
+    assert class_values_equal(None, pd.NA)
+    assert class_values_equal(float("nan"), float("nan"))
+    assert class_values_equal(_TargetClass.ACTIVE, _TargetClass.ACTIVE)
 
 
 def test_phase8_state_json_round_trip_preserves_numpy_class_identities() -> None:
