@@ -1,5 +1,7 @@
 """JSON and JSON Lines data source."""
 
+from typing import Any, cast
+
 import pandas as pd
 
 from mlprep.data_sources._local import (
@@ -31,8 +33,13 @@ class JSONSource:
         try:
             if self._config.record_path is not None:
                 frame = pd.json_normalize(
-                    pd.read_json(path, lines=self._config.lines).to_dict(
-                        orient="records"
+                    cast(
+                        list[dict[str, Any]],
+                        pd.read_json(
+                            path,
+                            lines=self._config.lines,
+                            encoding=self._config.encoding,
+                        ).to_dict(orient="records"),
                     ),
                     record_path=self._config.record_path,
                 )

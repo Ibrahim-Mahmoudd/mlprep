@@ -11,6 +11,10 @@ class DataFrameSourceConfig:
 
     source_name: str = "dataframe"
 
+    def __post_init__(self) -> None:
+        if not self.source_name.strip():
+            raise ValueError("source_name must not be empty.")
+
 
 @dataclass(frozen=True, slots=True)
 class CSVSourceConfig:
@@ -26,6 +30,11 @@ class CSVSourceConfig:
     allowed_root: str | Path | None = None
     expected_schema: dict[str, str] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        _validate_local_options(self.maximum_file_size_mb)
+        if len(self.delimiter) != 1:
+            raise ValueError("delimiter must be exactly one character.")
+
 
 @dataclass(frozen=True, slots=True)
 class JSONSourceConfig:
@@ -39,6 +48,11 @@ class JSONSourceConfig:
     allowed_root: str | Path | None = None
     expected_schema: dict[str, str] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        _validate_local_options(self.maximum_file_size_mb)
+        if self.record_path is not None and not self.record_path.strip():
+            raise ValueError("record_path must not be empty.")
+
 
 @dataclass(frozen=True, slots=True)
 class ParquetSourceConfig:
@@ -50,6 +64,9 @@ class ParquetSourceConfig:
     maximum_file_size_mb: float = 500.0
     allowed_root: str | Path | None = None
     expected_schema: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        _validate_local_options(self.maximum_file_size_mb)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +81,12 @@ class SQLSourceConfig:
     read_only: bool = True
     allowed_query_root: str | Path | None = None
     expected_schema: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive.")
+        if self.chunksize is not None and self.chunksize <= 0:
+            raise ValueError("chunksize must be positive when configured.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,3 +106,18 @@ class APISourceConfig:
     record_path: str | None = None
     allowed_hosts: tuple[str, ...] = ()
     expected_schema: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive.")
+        if self.max_response_size_mb <= 0:
+            raise ValueError("max_response_size_mb must be positive.")
+        if self.max_pages <= 0:
+            raise ValueError("max_pages must be positive.")
+        if self.page_size is not None and self.page_size <= 0:
+            raise ValueError("page_size must be positive when configured.")
+
+
+def _validate_local_options(maximum_file_size_mb: float) -> None:
+    if maximum_file_size_mb <= 0:
+        raise ValueError("maximum_file_size_mb must be positive.")

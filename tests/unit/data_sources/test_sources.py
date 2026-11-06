@@ -1,4 +1,5 @@
 import json
+from typing import ClassVar
 
 import pandas as pd
 import pytest
@@ -15,8 +16,14 @@ from mlprep.data_sources import (
     ParquetSourceConfig,
     SQLSource,
     SQLSourceConfig,
+    api_source,
 )
-from mlprep.exceptions import DataSourceLoadError, DataSourceSchemaError
+from mlprep.data_sources.config_loader import DataSourceConfigLoader
+from mlprep.exceptions import (
+    ConfigurationError,
+    DataSourceLoadError,
+    DataSourceSchemaError,
+)
 
 
 def test_dataframe_source_copies_input_and_returns_stable_metadata() -> None:
@@ -118,3 +125,48 @@ def test_sql_source_requires_environment_url(tmp_path) -> None:
                 query_file=query,
             )
         ).load()
+
+
+def test_config_loader_rejects_unknown_keys_and_loads_yaml(tmp_path) -> None:
+    path = tmp_path / "source.yaml"
+    path.write_text(
+        "type: csv\nconfig:\n  path: data.csv\n  unknown: true\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigurationError, match="Unknown"):
+        DataSourceConfigLoader.load(path)
+
+
+def test_api_source_uses_token_only_in_authorization_header(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    class Response:
+        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/json"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, size: int) -> bytes:
+            return b'[{"id": 1}]'
+
+    def fake_urlopen(request, timeout):
+        captured["authorization"] = request.headers["Authorization"]
+        return Response()
+
+    monkeypatch.setattr(api_source, "urlopen", fake_urlopen)
+    monkeypatch.setenv("MLPREP_API_TOKEN", "secret-value")
+    result = APISource(
+        APISourceConfig(
+            base_url="https://example.test",
+            endpoint="/records",
+            token_env="MLPREP_API_TOKEN",
+            allowed_hosts=("example.test",),
+        )
+    ).load()
+
+    assert result.frame["id"].tolist() == [1]
+    assert captured["authorization"] == "Bearer secret-value"
+    assert "secret-value" not in repr(result.to_dict())

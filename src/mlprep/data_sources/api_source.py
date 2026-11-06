@@ -5,6 +5,7 @@ import os
 import time
 from datetime import datetime
 from hashlib import sha256
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 from urllib.request import Request, urlopen
@@ -32,7 +33,7 @@ class APISource:
             if self._config.token_env
             else None
         )
-        records: list[object] = []
+        records: list[dict[str, Any]] = []
         first_payload: object = None
         for page in range(1, self._config.max_pages + 1):
             page_url = self._page_url(url, page)
@@ -74,8 +75,12 @@ class APISource:
             provenance={"source_type": "api", "endpoint": self._config.endpoint},
         )
 
-    def _validated_url(self) -> str:
-        url = urljoin(self._config.base_url.rstrip("/") + "/", self._config.endpoint)
+    def _validated_url(self, url: str | None = None) -> str:
+        if url is None:
+            url = urljoin(
+                self._config.base_url.rstrip("/") + "/",
+                self._config.endpoint,
+            )
         parsed = urlparse(url)
         if parsed.scheme not in {"https", "http"} or not parsed.hostname:
             raise DataSourceLoadError("API URL must include a valid HTTP(S) host.")
@@ -106,9 +111,9 @@ class APISource:
                         raise DataSourceLoadError(
                             "API response content type is not JSON."
                         )
-                    body = response.read(
+                    body = bytes(response.read(
                         int(self._config.max_response_size_mb * 1024 * 1024) + 1
-                    )
+                    ))
                     if len(body) > self._config.max_response_size_mb * 1024 * 1024:
                         raise DataSourceLoadError(
                             "API response exceeds configured size."
@@ -123,14 +128,20 @@ class APISource:
             time.sleep(2**attempt)
         raise DataSourceLoadError("API request failed after retries.")
 
-    def _records(self, payload: object) -> list[object]:
+    def _records(self, payload: object) -> list[dict[str, Any]]:
         if self._config.record_path is None:
             if isinstance(payload, list):
+                if not all(isinstance(item, dict) for item in payload):
+                    raise DataSourceLoadError("API records must be JSON objects.")
                 return payload
+            if not isinstance(payload, dict):
+                raise DataSourceLoadError("API response must contain JSON objects.")
             return [payload]
         if not isinstance(payload, dict):
             raise DataSourceLoadError("record_path requires an object response.")
         records = payload.get(self._config.record_path)
-        if not isinstance(records, list):
+        if not isinstance(records, list) or not all(
+            isinstance(item, dict) for item in records
+        ):
             raise DataSourceLoadError("API record_path does not contain a list.")
         return records

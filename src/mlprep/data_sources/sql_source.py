@@ -1,6 +1,7 @@
 """Optional SQLAlchemy-backed data source."""
 
 import hashlib
+import importlib
 import os
 from pathlib import Path
 
@@ -44,19 +45,19 @@ class SQLSource:
         if not query.strip():
             raise DataSourceLoadError("The SQL query must not be empty.")
         try:
-            from sqlalchemy import create_engine, text
+            sqlalchemy = importlib.import_module("sqlalchemy")
         except ImportError as exc:
             raise DataSourceLoadError(
                 "SQL support requires the optional sqlalchemy dependency."
             ) from exc
         try:
-            engine = create_engine(
+            engine = sqlalchemy.create_engine(
                 connection_url,
                 connect_args={"connect_timeout": self._config.timeout_seconds},
             )
             with engine.connect() as connection:
                 frame = pd.read_sql_query(
-                    text(query),
+                    sqlalchemy.text(query),
                     connection,
                     params=self._config.query_parameters,
                     chunksize=self._config.chunksize,

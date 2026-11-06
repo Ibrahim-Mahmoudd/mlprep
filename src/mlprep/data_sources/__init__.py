@@ -10,6 +10,7 @@ from mlprep.data_sources.config import (
     ParquetSourceConfig,
     SQLSourceConfig,
 )
+from mlprep.data_sources.config_loader import DataSourceConfigLoader
 from mlprep.data_sources.csv_source import CSVSource
 from mlprep.data_sources.dataframe_source import DataFrameSource
 from mlprep.data_sources.factory import DataSourceFactory
@@ -27,6 +28,7 @@ __all__ = [
     "DataFrameSource",
     "DataFrameSourceConfig",
     "DataSource",
+    "DataSourceConfigLoader",
     "DataSourceFactory",
     "DataSourceMetadata",
     "DataSourceResult",
