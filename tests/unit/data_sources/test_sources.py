@@ -4,6 +4,8 @@ import pandas as pd
 import pytest
 
 from mlprep.data_sources import (
+    APISource,
+    APISourceConfig,
     CSVSource,
     CSVSourceConfig,
     DataFrameSource,
@@ -11,6 +13,8 @@ from mlprep.data_sources import (
     JSONSourceConfig,
     ParquetSource,
     ParquetSourceConfig,
+    SQLSource,
+    SQLSourceConfig,
 )
 from mlprep.exceptions import DataSourceLoadError, DataSourceSchemaError
 
@@ -91,3 +95,26 @@ def test_parquet_source_reports_optional_engine_error(tmp_path, monkeypatch) -> 
     monkeypatch.setattr(pd, "read_parquet", missing_engine)
     with pytest.raises(DataSourceLoadError, match="optional engine"):
         ParquetSource(ParquetSourceConfig(path=path)).load()
+
+
+def test_api_source_requires_explicit_host_allowlist() -> None:
+    with pytest.raises(DataSourceLoadError, match="allowed_hosts"):
+        APISource(
+            APISourceConfig(
+                base_url="https://example.test",
+                endpoint="/records",
+            )
+        ).load()
+
+
+def test_sql_source_requires_environment_url(tmp_path) -> None:
+    query = tmp_path / "query.sql"
+    query.write_text("SELECT 1", encoding="utf-8")
+
+    with pytest.raises(DataSourceLoadError, match="environment variable"):
+        SQLSource(
+            SQLSourceConfig(
+                connection_url_env="MLPREP_TEST_DATABASE_URL",
+                query_file=query,
+            )
+        ).load()

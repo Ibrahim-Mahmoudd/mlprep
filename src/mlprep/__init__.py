@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from mlprep.data_sources import (
+    APISource,
+    APISourceConfig,
     CSVSource,
     CSVSourceConfig,
     DataFrameSource,
@@ -15,6 +17,8 @@ from mlprep.data_sources import (
     JSONSourceConfig,
     ParquetSource,
     ParquetSourceConfig,
+    SQLSource,
+    SQLSourceConfig,
 )
 from mlprep.phases import (
     Phase1,
@@ -86,6 +90,8 @@ from mlprep.phases import (
 
 __all__ = [
     # Data sources
+    "APISource",
+    "APISourceConfig",
     "CSVSource",
     "CSVSourceConfig",
     "DataFrameSource",
@@ -180,6 +186,8 @@ __all__ = [
     "Phase9ReadinessDecision",
     "Phase9Result",
     "Phase9Status",
+    "SQLSource",
+    "SQLSourceConfig",
 ]
 
 

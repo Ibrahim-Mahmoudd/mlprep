@@ -3,17 +3,21 @@
 from dataclasses import dataclass
 from typing import Any
 
+from mlprep.data_sources.api_source import APISource
 from mlprep.data_sources.base import DataSource
 from mlprep.data_sources.config import (
+    APISourceConfig,
     CSVSourceConfig,
     DataFrameSourceConfig,
     JSONSourceConfig,
     ParquetSourceConfig,
+    SQLSourceConfig,
 )
 from mlprep.data_sources.csv_source import CSVSource
 from mlprep.data_sources.dataframe_source import DataFrameSource
 from mlprep.data_sources.json_source import JSONSource
 from mlprep.data_sources.parquet_source import ParquetSource
+from mlprep.data_sources.sql_source import SQLSource
 from mlprep.exceptions import ConfigurationError
 
 
@@ -36,4 +40,8 @@ class DataSourceFactory:
             return JSONSource(config)
         if kind == "parquet" and isinstance(config, ParquetSourceConfig):
             return ParquetSource(config)
+        if kind == "sql" and isinstance(config, SQLSourceConfig):
+            return SQLSource(config)
+        if kind == "api" and isinstance(config, APISourceConfig):
+            return APISource(config)
         raise ConfigurationError(f"Unsupported data source or configuration: {kind}")
