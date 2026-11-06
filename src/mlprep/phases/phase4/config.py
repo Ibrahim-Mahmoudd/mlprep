@@ -172,7 +172,12 @@ class Phase4Config:
             return cls._serialize(value.model_dump(mode="json"))
         if isinstance(value, dict):
             return {str(key): cls._serialize(item) for key, item in value.items()}
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, set):
+            return [
+                cls._serialize(item)
+                for item in sorted(value, key=repr)
+            ]
+        if isinstance(value, (list, tuple)):
             return [cls._serialize(item) for item in value]
         if hasattr(value, "value"):
             return value.value

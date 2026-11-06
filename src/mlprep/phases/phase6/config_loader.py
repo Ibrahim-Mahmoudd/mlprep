@@ -61,7 +61,6 @@ from mlprep.phases.phase6.validation import (
     UnknownCategoryOptions,
 )
 
-
 ConfigFormat = Literal[
     "yaml",
     "json",
@@ -194,6 +193,31 @@ class Phase6ConfigLoader:
                 f"{sorted(unknown)}"
             )
 
+        pipeline_values = cls._mapping(
+            root.get(
+                "pipeline",
+                {},
+            ),
+            "pipeline",
+        )
+        for section in (
+            "numeric",
+            "categorical",
+            "boolean",
+            "datetime",
+            "text",
+            "partition_transformer",
+        ):
+            if section not in pipeline_values:
+                continue
+            nested_value = pipeline_values.pop(section)
+            if section in root and root[section] != nested_value:
+                raise ValueError(
+                    f"Conflicting Phase 6 {section} configuration "
+                    "between the root and pipeline sections."
+                )
+            root.setdefault(section, nested_value)
+
         numeric = cls._numeric(
             root.get(
                 "numeric",
@@ -246,14 +270,6 @@ class Phase6ConfigLoader:
                 ),
                 "partition_transformer",
             )
-        )
-
-        pipeline_values = cls._mapping(
-            root.get(
-                "pipeline",
-                {},
-            ),
-            "pipeline",
         )
 
         pipeline = TransformationPipelineOptions(
