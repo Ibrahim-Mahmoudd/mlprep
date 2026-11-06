@@ -2,6 +2,20 @@
 
 from __future__ import annotations
 
+from mlprep.data_sources import (
+    CSVSource,
+    CSVSourceConfig,
+    DataFrameSource,
+    DataFrameSourceConfig,
+    DataSource,
+    DataSourceFactory,
+    DataSourceMetadata,
+    DataSourceResult,
+    JSONSource,
+    JSONSourceConfig,
+    ParquetSource,
+    ParquetSourceConfig,
+)
 from mlprep.phases import (
     Phase1,
     Phase1Config,
@@ -71,6 +85,19 @@ from mlprep.phases import (
 )
 
 __all__ = [
+    # Data sources
+    "CSVSource",
+    "CSVSourceConfig",
+    "DataFrameSource",
+    "DataFrameSourceConfig",
+    "DataSource",
+    "DataSourceFactory",
+    "DataSourceMetadata",
+    "DataSourceResult",
+    "JSONSource",
+    "JSONSourceConfig",
+    "ParquetSource",
+    "ParquetSourceConfig",
     # Phase 1
     "Phase1",
     "Phase1Config",

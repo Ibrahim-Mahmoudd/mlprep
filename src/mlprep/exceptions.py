@@ -51,3 +51,15 @@ class ReadinessError(Phase1Error):
 
 class ArtifactError(MLPrepError):
     """Raised when artifact creation or loading fails."""
+
+
+class DataSourceError(MLPrepError):
+    """Base exception for data-source failures."""
+
+
+class DataSourceLoadError(DataSourceError):
+    """Raised when a source cannot be loaded safely."""
+
+
+class DataSourceSchemaError(DataSourceError):
+    """Raised when loaded data violates the expected schema."""
