@@ -9,6 +9,7 @@ from typing import Any
 
 import pandas as pd
 
+from mlprep.data_sources import DataSource, DataSourceResult
 from mlprep.phases import (
     Phase1,
     Phase2,
@@ -56,20 +57,37 @@ class MLPrepPipeline:
     def run(
         self,
         *,
-        data: pd.DataFrame,
+        data: pd.DataFrame | DataSource,
         dry_run: bool = False,
         resume: bool = False,
     ) -> Phase9Result:
         """Execute all phases; dry runs suppress every persistent output."""
 
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError("data must be a pandas DataFrame.")
+        source_result: DataSourceResult | None = None
+        if isinstance(data, pd.DataFrame):
+            frame = data
+        else:
+            load = getattr(data, "load", None)
+            if not callable(load):
+                raise TypeError("data must be a pandas DataFrame or DataSource.")
+            source_result = load()
+            if not isinstance(source_result, DataSourceResult):
+                raise TypeError("DataSource.load() must return DataSourceResult.")
+            frame = source_result.frame
         if not isinstance(dry_run, bool) or not isinstance(resume, bool):
             raise TypeError("dry_run and resume must be booleans.")
 
-        execution_id, source_fingerprint, config_fingerprint = (
-            PipelineExecutionManifest.execution_id_for(data, self.config)
-        )
+        if source_result is None:
+            execution_id, source_fingerprint, config_fingerprint = (
+                PipelineExecutionManifest.execution_id_for(frame, self.config)
+            )
+        else:
+            execution_id, source_fingerprint, config_fingerprint = (
+                PipelineExecutionManifest.execution_id_for_source_fingerprint(
+                    source_result.source_fingerprint,
+                    self.config,
+                )
+            )
         run_config = copy.deepcopy(self.config)
         self.state = MLPrepPipelineState()
         self.result = None
@@ -110,7 +128,7 @@ class MLPrepPipeline:
         phase_fingerprints: dict[str, str] = {}
 
         phase1 = Phase1(run_config.phase1)
-        phase1_result = phase1.run(data)
+        phase1_result = phase1.run(frame)
         self._advance(
             phase="phase1",
             result=phase1_result,

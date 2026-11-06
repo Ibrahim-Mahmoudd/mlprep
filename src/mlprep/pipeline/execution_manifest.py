@@ -102,6 +102,16 @@ class PipelineExecutionManifest(BaseModel):
         """Return deterministic execution, source, and configuration fingerprints."""
 
         source_fingerprint = cls.dataframe_fingerprint(data)
+        return cls.execution_id_for_source_fingerprint(source_fingerprint, config)
+
+    @classmethod
+    def execution_id_for_source_fingerprint(
+        cls,
+        source_fingerprint: str,
+        config: object,
+    ) -> tuple[str, str, str]:
+        """Build execution identity from an externally governed source."""
+
         config_fingerprint = cls.fingerprint_configuration(config)
         execution_id = hashlib.sha256(
             (

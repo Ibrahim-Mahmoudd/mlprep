@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 import yaml
 
+from mlprep.data_sources import DataFrameSource
 from mlprep.phases import (
     Phase1Config,
     Phase2Config,
@@ -135,6 +136,15 @@ def test_pipeline_runs_all_phases_and_persists_atomic_outputs(
     changed_source.loc[0, "feature_a"] += 1
     with pytest.raises(PipelineResumeError, match="Source data fingerprint"):
         pipeline.run(data=changed_source, resume=True)
+
+
+def test_pipeline_accepts_unified_dataframe_source_contract() -> None:
+    config = _pipeline_config()
+    source = DataFrameSource(_source_data())
+
+    handoff = MLPrepPipeline(config).run(data=source)
+
+    assert handoff.readiness.ready
 
 
 def test_pipeline_stops_when_phase_one_is_not_ready() -> None:
