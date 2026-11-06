@@ -272,6 +272,12 @@ class Phase3ReportBuilder:
                 f"{severity}: {count}"
             )
 
+        transformation_count = 0
+        imputation_count = 0
+        outlier_count = 0
+        encoding_count = 0
+        interaction_count = 0
+
         if result.recommendations is not None:
             recommendation_metadata = (
                 result.recommendations.metadata
