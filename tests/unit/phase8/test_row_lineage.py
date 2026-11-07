@@ -152,3 +152,105 @@ def test_row_lineage_rejects_invalid_source_shape_and_sampler_result() -> None:
             source_row_ids=pd.Series(["row-0", "row-1"]),
             sampler_result=object(),  # type: ignore[arg-type]
         )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ("position", "output position exceeds"),
+        ("row_id", "row ID differs"),
+        ("target", "target differs"),
+        ("features", "values do not match"),
+    ],
+)
+def test_row_lineage_rejects_inconsistent_output_records(
+    mutation: str,
+    message: str,
+) -> None:
+    record = SamplerRowRecord(
+        output_position=0,
+        output_row_id="row-0",
+        row_type=ResampledRowType.ORIGINAL,
+        class_value=0,
+        source_row_ids=["row-0"],
+        source_positions=[0],
+        original=True,
+    )
+    if mutation == "position":
+        record.output_position = 2
+    elif mutation == "row_id":
+        record.output_row_id = "wrong"
+    elif mutation == "target":
+        record.class_value = 99
+    else:
+        record.source_positions = [1]
+
+    second = SamplerRowRecord(
+        output_position=1,
+        output_row_id="row-1",
+        row_type=ResampledRowType.ORIGINAL,
+        class_value=1,
+        source_row_ids=["row-1"],
+        source_positions=[1],
+        original=True,
+    )
+    with pytest.raises((IndexError, ValueError), match=message):
+        _tracker().build(
+            source_features=pd.DataFrame({"feature": [1.0, 2.0]}),
+            source_target=pd.Series([0, 1]),
+            source_row_ids=pd.Series(["row-0", "row-1"]),
+            sampler_result=_result(row_lineage=[record, second]),
+        )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ("row_id", "lineage ID differs"),
+        ("target", "lineage target differs"),
+        ("position", "source position exceeds"),
+    ],
+)
+def test_row_lineage_rejects_inconsistent_removed_records(
+    mutation: str,
+    message: str,
+) -> None:
+    record = RemovedRowRecord(
+        row_id="row-1",
+        source_position=1,
+        class_value=1,
+        reason="removed",
+        stage="sampling",
+    )
+    if mutation == "row_id":
+        record.row_id = "wrong"
+    elif mutation == "target":
+        record.class_value = 99
+    else:
+        record.source_position = 2
+
+    result = _result(
+        row_lineage=[
+            SamplerRowRecord(
+                output_position=0,
+                output_row_id="row-0",
+                row_type=ResampledRowType.ORIGINAL,
+                class_value=0,
+                source_row_ids=["row-0"],
+                source_positions=[0],
+                original=True,
+            )
+        ],
+        removed_rows=[record],
+    )
+    result.features = result.features.iloc[:1]
+    result.target = result.target.iloc[:1]
+    result.row_ids = result.row_ids.iloc[:1]
+
+    with pytest.raises((IndexError, ValueError), match=message):
+        _tracker().build(
+            source_features=pd.DataFrame({"feature": [1.0, 2.0]}),
+            source_target=pd.Series([0, 1]),
+            source_row_ids=pd.Series(["row-0", "row-1"]),
+            sampler_result=result,
+        )
