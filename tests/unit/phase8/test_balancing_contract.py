@@ -14,6 +14,7 @@ from mlprep.phases.phase7.output_governance.result import (
 )
 from mlprep.phases.phase7.output_governance.state import Phase7State
 from mlprep.phases.phase8.contract.balancing_contract import (
+    BalancingContractIssue,
     BalancingContractOptions,
     BalancingContractResolver,
 )
@@ -93,8 +94,62 @@ def test_valid_contract_copies_partitions_and_exposes_class_metadata() -> None:
     assert contract.feature_columns == ["feature_a", "feature_b"]
     assert len(contract.target_classes) == 2
     assert contract.class_count == 2
+    assert contract.smallest_class_count == 2
+    assert contract.largest_class_count == 2
+    assert not contract.has_blocking_issues
+    contract.assert_ready()
     assert contract.partition(PartitionName.TRAIN) is contract.train
     assert contract.train is not result.train
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "error"),
+    [
+        ("require_phase7_state", "yes", TypeError),
+        ("minimum_training_class_count", 0, ValueError),
+        ("maximum_reported_columns", 0, ValueError),
+        ("maximum_reported_row_ids", 0, ValueError),
+        ("maximum_reported_classes", 0, ValueError),
+    ],
+)
+def test_contract_options_reject_invalid_limits(
+    field: str,
+    value: object,
+    error: type[Exception],
+) -> None:
+    with pytest.raises(error):
+        BalancingContractOptions(**{field: value})
+
+
+def test_resolver_reads_state_from_phase7_result_and_rejects_missing_state() -> None:
+    result = _result()
+    result.state = _state()
+    contract = BalancingContractResolver().resolve(phase7_result=result)
+
+    assert contract.phase7_state.output_fingerprint == "phase7-output"
+
+    result.state = None
+    result.phase_state = {}
+    with pytest.raises(ValueError, match="state is unavailable"):
+        BalancingContractResolver().resolve(phase7_result=result)
+
+
+def test_contract_readiness_reports_blocking_issues_and_empty_class_counts() -> None:
+    contract = _resolve()
+    contract.training_class_counts.clear()
+    assert contract.smallest_class_count == 0
+    assert contract.largest_class_count == 0
+
+    contract.issues.append(
+        BalancingContractIssue(
+            code="P8-TEST",
+            severity="critical",
+            message="blocked",
+        )
+    )
+    assert contract.has_blocking_issues
+    with pytest.raises(ValueError, match="blocking issues"):
+        contract.assert_ready()
 
 
 @pytest.mark.parametrize(
