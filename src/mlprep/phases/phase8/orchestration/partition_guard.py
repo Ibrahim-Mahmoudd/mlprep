@@ -526,9 +526,7 @@ class PartitionGuard:
                 f"{series.name}|"
                 f"{series.dtype}|"
                 f"{len(series)}"
-            ).encode(
-                "utf-8"
-            )
+            ).encode()
         )
 
         hashes = pd.util.hash_pandas_object(

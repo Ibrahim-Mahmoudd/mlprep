@@ -197,14 +197,14 @@ class ModelImputer(BaseImputer):
                 mean_value
             )
 
-        X = training_frame.to_numpy(
+        x = training_frame.to_numpy(
             dtype=float
         )
 
-        X = np.column_stack(
+        x = np.column_stack(
             [
-                np.ones(len(X)),
-                X,
+                np.ones(len(x)),
+                x,
             ]
         )
 
@@ -216,7 +216,7 @@ class ModelImputer(BaseImputer):
 
             valid_target = y.notna()
 
-            X = X[
+            x = x[
                 valid_target.to_numpy()
             ]
 
@@ -229,7 +229,7 @@ class ModelImputer(BaseImputer):
             penalty = (
                 self.options.ridge_alpha
                 * np.eye(
-                    X.shape[1]
+                    x.shape[1]
                 )
             )
 
@@ -237,9 +237,9 @@ class ModelImputer(BaseImputer):
 
             self._coefficients = (
                 np.linalg.pinv(
-                    X.T @ X + penalty
+                    x.T @ x + penalty
                 )
-                @ X.T
+                @ x.T
                 @ y_values
             )
 
@@ -351,19 +351,19 @@ class ModelImputer(BaseImputer):
                 mean_value
             )
 
-        X = predictor_frame.to_numpy(
+        x = predictor_frame.to_numpy(
             dtype=float
         )
 
-        X = np.column_stack(
+        x = np.column_stack(
             [
-                np.ones(len(X)),
-                X,
+                np.ones(len(x)),
+                x,
             ]
         )
 
         predictions = (
-            X @ self._coefficients
+            x @ self._coefficients
         )
 
         result.loc[

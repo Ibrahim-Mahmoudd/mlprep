@@ -197,7 +197,7 @@ class Phase3FingerprintManager:
     @staticmethod
     def partition_fingerprint(
         *,
-        X: pd.DataFrame,
+        X: pd.DataFrame,  # noqa: N803 - public fingerprint API uses X/y notation
         y: pd.Series,
         row_ids: pd.Series,
     ) -> str:

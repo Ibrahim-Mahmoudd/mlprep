@@ -30,7 +30,7 @@ class FitContext:
     test_partition_authorized: bool = False
 
     @classmethod
-    def training_fit(cls) -> "FitContext":
+    def training_fit(cls) -> FitContext:
         return cls(
             partition=PartitionName.TRAIN,
             operation=ImputationOperation.FIT_TRANSFORM,
@@ -40,7 +40,7 @@ class FitContext:
         )
 
     @classmethod
-    def training_transform(cls) -> "FitContext":
+    def training_transform(cls) -> FitContext:
         return cls(
             partition=PartitionName.TRAIN,
             operation=ImputationOperation.TRANSFORM,
@@ -50,7 +50,7 @@ class FitContext:
         )
 
     @classmethod
-    def validation_transform(cls) -> "FitContext":
+    def validation_transform(cls) -> FitContext:
         return cls(
             partition=PartitionName.VALIDATION,
             operation=ImputationOperation.TRANSFORM,
@@ -60,7 +60,7 @@ class FitContext:
         )
 
     @classmethod
-    def test_transform(cls, *, authorized: bool) -> "FitContext":
+    def test_transform(cls, *, authorized: bool) -> FitContext:
         return cls(
             partition=PartitionName.TEST,
             operation=ImputationOperation.TRANSFORM,
@@ -74,17 +74,21 @@ class FitContext:
         """Validate the execution context."""
         if self.target_access_allowed:
             raise PermissionError("Target-dependent imputation is prohibited.")
-        if self.fitting_allowed:
-            if not self.training_data or self.partition != PartitionName.TRAIN:
-                raise PermissionError("Fitting is only permitted on training data.")
+        if (
+            self.fitting_allowed
+            and (
+                not self.training_data
+                or self.partition != PartitionName.TRAIN
+            )
+        ):
+            raise PermissionError("Fitting is only permitted on training data.")
         if self.operation in {
             ImputationOperation.TRANSFORM,
             ImputationOperation.FIT_TRANSFORM,
-        }:
-            if (
-                self.partition == PartitionName.TEST
-                and not self.test_partition_authorized
-            ):
-                raise PermissionError(
-                    "Test transformation requires authorized access."
-                )
+        } and (
+            self.partition == PartitionName.TEST
+            and not self.test_partition_authorized
+        ):
+            raise PermissionError(
+                "Test transformation requires authorized access."
+            )

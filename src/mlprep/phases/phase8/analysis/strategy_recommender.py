@@ -463,7 +463,7 @@ class StrategyRecommender:
                 "fall back to random oversampling."
             )
 
-        for strategy, candidate in (
+        for _strategy, candidate in (
             candidates.items()
         ):
             candidate.recommended = bool(

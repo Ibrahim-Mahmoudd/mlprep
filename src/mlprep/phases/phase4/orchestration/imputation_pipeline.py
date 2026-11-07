@@ -533,23 +533,7 @@ class ImputationPipeline:
 
             if isinstance(
                 imputer,
-                GroupImputer,
-            ):
-                imputer.fit_frame(
-                    frame
-                )
-
-            elif isinstance(
-                imputer,
-                TemporalImputer,
-            ):
-                imputer.fit_frame(
-                    frame
-                )
-
-            elif isinstance(
-                imputer,
-                ModelImputer,
+                (GroupImputer, TemporalImputer, ModelImputer),
             ):
                 imputer.fit_frame(
                     frame

@@ -363,7 +363,7 @@ class CategoricalPipeline:
             UnknownCategorySummary,
         ] = {}
 
-        for column, entry in (
+        for column, _entry in (
             self.entries.items()
         ):
             if column not in frame.columns:

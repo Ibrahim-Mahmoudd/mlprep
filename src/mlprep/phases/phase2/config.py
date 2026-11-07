@@ -591,14 +591,7 @@ class Phase2Config:
     ) -> bool:
         """Return whether the selected strategy shuffles."""
 
-        if self.strategy in {
-            SplitStrategyName.TIME,
-            SplitStrategyName.PURGED_TIME,
-            SplitStrategyName.PREDEFINED,
-        }:
-            return False
-
-        return True
+        return self.strategy not in {SplitStrategyName.TIME, SplitStrategyName.PURGED_TIME, SplitStrategyName.PREDEFINED}
 
     @classmethod
     def create(

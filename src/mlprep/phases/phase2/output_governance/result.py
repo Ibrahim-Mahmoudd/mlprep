@@ -115,7 +115,7 @@ class DatasetPartition:
         self,
         *,
         name: PartitionName,
-        X: pd.DataFrame,
+        X: pd.DataFrame,  # noqa: N803 - public partition API uses X/y notation
         y: pd.Series,
         row_ids: pd.Series,
         metadata: PartitionMetadata | None = None,

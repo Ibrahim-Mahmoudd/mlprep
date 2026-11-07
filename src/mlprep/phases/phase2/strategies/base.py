@@ -390,7 +390,7 @@ class BaseSplitStrategy(ABC):
             indices
         ].copy()
 
-        X = partition_data.loc[
+        x = partition_data.loc[
             :,
             contract.feature_columns,
         ].copy()
@@ -406,7 +406,7 @@ class BaseSplitStrategy(ABC):
         metadata = PartitionMetadata(
             name=name,
             row_count=len(partition_data),
-            feature_count=len(X.columns),
+            feature_count=len(x.columns),
             row_fraction=self._safe_ratio(
                 len(partition_data),
                 len(contract.data),
@@ -421,7 +421,7 @@ class BaseSplitStrategy(ABC):
 
         return DatasetPartition(
             name=name,
-            X=X,
+            X=x,
             y=y,
             row_ids=row_ids,
             metadata=metadata,
@@ -455,9 +455,9 @@ class BaseSplitStrategy(ABC):
 
         test_count = max(
             1,
-            int(round(
+            round(
                 row_count * ratios.test
-            )),
+            ),
         )
 
         validation_count = 0
@@ -465,10 +465,10 @@ class BaseSplitStrategy(ABC):
         if ratios.validation > 0:
             validation_count = max(
                 1,
-                int(round(
+                round(
                     row_count
                     * ratios.validation
-                )),
+                ),
             )
 
         train_count = (

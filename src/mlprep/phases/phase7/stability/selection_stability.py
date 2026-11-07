@@ -298,7 +298,7 @@ class SelectionStabilityEvaluator:
             )
         )
 
-        for iteration in range(
+        for _iteration in range(
             self.options.bootstrap_iterations
         ):
             try:
@@ -632,13 +632,11 @@ class SelectionStabilityEvaluator:
 
         sample_count = max(
             2,
-            int(
-                round(
+            round(
                     row_count
                     * self.options
                     .sample_fraction
-                )
-            ),
+                ),
         )
 
         if (
@@ -660,15 +658,13 @@ class SelectionStabilityEvaluator:
 
                 class_sample_count = max(
                     1,
-                    int(
-                        round(
+                    round(
                             len(
                                 class_positions
                             )
                             * self.options
                             .sample_fraction
-                        )
-                    ),
+                        ),
                 )
 
                 class_sample = (

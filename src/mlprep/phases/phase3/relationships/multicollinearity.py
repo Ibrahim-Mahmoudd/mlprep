@@ -206,28 +206,28 @@ class MulticollinearityAnalyzer:
                 column_position
             ]
 
-            X = np.delete(
+            x = np.delete(
                 values,
                 column_position,
                 axis=1,
             )
 
-            X = np.column_stack(
+            x = np.column_stack(
                 [
-                    np.ones(len(X)),
-                    X,
+                    np.ones(len(x)),
+                    x,
                 ]
             )
 
             coefficients, _, _, _ = (
                 np.linalg.lstsq(
-                    X,
+                    x,
                     y,
                     rcond=None,
                 )
             )
 
-            predictions = X @ coefficients
+            predictions = x @ coefficients
 
             residual_sum_squares = float(
                 (

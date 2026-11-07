@@ -321,7 +321,7 @@ class TargetIntegrityValidator:
                 f"{target.name}|"
                 f"{target.dtype}|"
                 f"{len(target)}"
-            ).encode("utf-8")
+            ).encode()
         )
 
         hashes = pd.util.hash_pandas_object(

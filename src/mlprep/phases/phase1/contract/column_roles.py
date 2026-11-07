@@ -306,7 +306,7 @@ class ColumnRoleAssigner:
             ColumnRole.OUTCOME_TIMESTAMP,
         }
 
-        for column, roles in role_map.items():
+        for _column, roles in role_map.items():
             if roles.intersection(non_feature_roles):
                 continue
 

@@ -537,10 +537,10 @@ class StratifiedSplitStrategy(BaseSplitStrategy):
 
         test_count = max(
             1,
-            int(round(
+            round(
                 class_row_count
                 * self.ratios.test
-            )),
+            ),
         )
 
         validation_count = 0
@@ -548,10 +548,10 @@ class StratifiedSplitStrategy(BaseSplitStrategy):
         if self.ratios.validation > 0:
             validation_count = max(
                 1,
-                int(round(
+                round(
                     class_row_count
                     * self.ratios.validation
-                )),
+                ),
             )
 
         train_count = (
