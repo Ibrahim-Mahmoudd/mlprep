@@ -58,6 +58,28 @@ class MutatingTransformer:
         return {"fitted": True}
 
 
+class InvalidOutputTransformer(TrainingMeanImputer):
+    def __init__(self, output: object, state: object) -> None:
+        super().__init__()
+        self.output = output
+        self.state = state
+
+    def transform(self, features: pd.DataFrame) -> object:
+        return self.output
+
+    def get_state(self) -> object:
+        return self.state
+
+
+class DuplicateColumnTransformer(TrainingMeanImputer):
+    def transform(self, features: pd.DataFrame) -> pd.DataFrame:
+        return pd.DataFrame(
+            [[1.0, 2.0]] * len(features),
+            index=features.index,
+            columns=["value", "value"],
+        )
+
+
 def _classification_data(
     *,
     row_count: int = 60,
@@ -311,3 +333,134 @@ def test_resampling_and_class_weights_use_fold_training_only() -> None:
             fold.context.validation_features
         )
         assert fold.sampler_state.fitted_on_training_only
+
+
+def test_fold_pipeline_rejects_invalid_step_definitions() -> None:
+    with pytest.raises(ValueError, match="cannot be empty"):
+        FoldStep(name=" ", factory=TrainingMeanImputer)
+    with pytest.raises(TypeError, match="must be callable"):
+        FoldStep(name="invalid", factory=object())  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="must be unique"):
+        FoldPipeline(
+            steps=[
+                FoldStep(name="duplicate", factory=TrainingMeanImputer),
+                FoldStep(name="duplicate", factory=TrainingMeanImputer),
+            ]
+        )
+    with pytest.raises(TypeError, match="sampler_factory"):
+        FoldPipeline(sampler_factory=object())  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="Boolean"):
+        FoldPipeline(resampling_authorized=1)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("factory", "message"),
+    [
+        (lambda: object(), "does not implement"),
+        (
+            lambda: InvalidOutputTransformer(
+                output=pd.Series([1]),
+                state={},
+            ),
+            "must return a DataFrame",
+        ),
+        (
+            lambda: InvalidOutputTransformer(
+                output=pd.DataFrame({"value": [1]}),
+                state={},
+            ),
+            "preserve row count and index",
+        ),
+        (
+            DuplicateColumnTransformer,
+            "duplicate feature names",
+        ),
+        (
+            lambda: InvalidOutputTransformer(
+                output=pd.DataFrame({"feature_a": [1.0] * 40}),
+                state=[],
+            ),
+            "get_state",
+        ),
+    ],
+)
+def test_fold_pipeline_rejects_invalid_transformer_contracts(
+    factory,
+    message: str,
+) -> None:
+    features, target = _classification_data()
+    runner = CrossValidationRunner(
+        CrossValidationConfig(n_splits=3),
+        fold_pipeline=FoldPipeline(
+            steps=[FoldStep(name="invalid", factory=factory)]
+        ),
+    )
+
+    with pytest.raises((TypeError, ValueError), match=message):
+        runner.run(features=features, target=target)
+
+
+def test_fold_pipeline_rejects_unauthorized_resampling() -> None:
+    features, target = _classification_data()
+    with pytest.raises(PermissionError, match="not authorized"):
+        CrossValidationRunner(
+            CrossValidationConfig(n_splits=3),
+            fold_pipeline=FoldPipeline(
+                sampler_factory=lambda: object(),
+            ),
+        ).run(features=features, target=target)
+
+    with pytest.raises(PermissionError, match="target-access"):
+        CrossValidationRunner(
+            CrossValidationConfig(n_splits=3),
+            fold_pipeline=FoldPipeline(
+                sampler_factory=lambda: object(),
+                resampling_authorized=True,
+            ),
+        ).run(features=features, target=target)
+
+
+@pytest.mark.parametrize(
+    ("features", "target", "message"),
+    [
+        (None, pd.Series([1]), "features must"),
+        (pd.DataFrame({"x": [1]}), None, "target must"),
+        (pd.DataFrame(), pd.Series(dtype=int), "cannot be empty"),
+        (
+            pd.DataFrame({"x": [1, 2]}),
+            pd.Series([1], index=[0]),
+            "aligned rows",
+        ),
+        (
+            pd.DataFrame([[1, 2]], columns=["x", "x"]),
+            pd.Series([1]),
+            "unique column",
+        ),
+    ],
+)
+def test_runner_rejects_invalid_inputs(
+    features,
+    target,
+    message: str,
+) -> None:
+    with pytest.raises((TypeError, ValueError), match=message):
+        CrossValidationRunner().run(features=features, target=target)
+
+
+def test_runner_rejects_misaligned_or_duplicate_row_ids() -> None:
+    features, target = _classification_data()
+    runner = CrossValidationRunner(CrossValidationConfig(n_splits=3))
+
+    with pytest.raises(ValueError, match="row_id must align"):
+        runner.run(
+            features=features,
+            target=target,
+            row_ids=pd.Series(range(len(features)), index=features.index + 1),
+        )
+    with pytest.raises(ValueError, match="unique and nonmissing"):
+        runner.run(
+            features=features,
+            target=target,
+            row_ids=["same"] * len(features),
+        )
