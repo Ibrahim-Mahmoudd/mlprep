@@ -99,8 +99,8 @@ __all__ = [
     "DataFrameSource",
     "DataFrameSourceConfig",
     "DataSource",
-    "DataSourceConfiguration",
     "DataSourceConfigLoader",
+    "DataSourceConfiguration",
     "DataSourceFactory",
     "DataSourceMetadata",
     "DataSourceResult",
@@ -116,7 +116,6 @@ __all__ = [
     "Phase1Result",
     "Phase1State",
     "Phase1Status",
-
     # Phase 2
     "Phase2",
     "Phase2Config",
@@ -125,7 +124,6 @@ __all__ = [
     "Phase2Result",
     "Phase2State",
     "Phase2Status",
-
     # Phase 3
     "Phase3",
     "Phase3Config",
@@ -134,7 +132,6 @@ __all__ = [
     "Phase3Result",
     "Phase3State",
     "Phase3Status",
-
     # Phase 4
     "Phase4",
     "Phase4Config",
@@ -143,7 +140,6 @@ __all__ = [
     "Phase4Result",
     "Phase4State",
     "Phase4Status",
-
     # Phase 5
     "Phase5",
     "Phase5Config",
@@ -152,7 +148,6 @@ __all__ = [
     "Phase5Result",
     "Phase5State",
     "Phase5Status",
-
     # Phase 6
     "Phase6",
     "Phase6Config",
@@ -161,7 +156,6 @@ __all__ = [
     "Phase6Result",
     "Phase6State",
     "Phase6Status",
-
     # Phase 7
     "Phase7",
     "Phase7Config",
@@ -170,7 +164,6 @@ __all__ = [
     "Phase7Result",
     "Phase7State",
     "Phase7Status",
-
     # Phase 8
     "Phase8",
     "Phase8Config",
@@ -179,7 +172,6 @@ __all__ = [
     "Phase8Result",
     "Phase8State",
     "Phase8Status",
-
     # Phase 9
     "Phase9",
     "Phase9Config",

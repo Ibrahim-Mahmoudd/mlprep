@@ -30,8 +30,8 @@ from mlprep.phases.phase5.detection.robust_zscore_detector import (
 ColumnDetectionResult = ColumnDetectionSummary
 
 __all__ = [
-    "ColumnDetectionSummary",
     "ColumnDetectionResult",
+    "ColumnDetectionSummary",
     "DetectionResult",
     "DetectorEngine",
     "DetectorEngineOptions",
