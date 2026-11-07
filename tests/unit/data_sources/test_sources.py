@@ -10,6 +10,7 @@ from mlprep.data_sources import (
     CSVSource,
     CSVSourceConfig,
     DataFrameSource,
+    DataFrameSourceConfig,
     DataSourceConfiguration,
     JSONSource,
     JSONSourceConfig,
@@ -20,6 +21,7 @@ from mlprep.data_sources import (
     api_source,
 )
 from mlprep.data_sources.config_loader import DataSourceConfigLoader
+from mlprep.data_sources.factory import DataSourceFactory
 from mlprep.exceptions import (
     ConfigurationError,
     DataSourceLoadError,
@@ -194,3 +196,189 @@ def test_api_source_uses_token_only_in_authorization_header(monkeypatch) -> None
     assert result.frame["id"].tolist() == [1]
     assert captured["authorization"] == "Bearer secret-value"
     assert "secret-value" not in repr(result.to_dict())
+
+
+@pytest.mark.parametrize(
+    ("kind", "config_type"),
+    [
+        ("csv", CSVSourceConfig),
+        ("json", JSONSourceConfig),
+        ("parquet", ParquetSourceConfig),
+        ("sql", SQLSourceConfig),
+        ("api", APISourceConfig),
+    ],
+)
+def test_source_factory_constructs_configured_sources(
+    kind: str,
+    config_type: type,
+    tmp_path,
+) -> None:
+    configs = {
+        CSVSourceConfig: CSVSourceConfig(path=tmp_path / "data.csv"),
+        JSONSourceConfig: JSONSourceConfig(path=tmp_path / "data.json"),
+        ParquetSourceConfig: ParquetSourceConfig(path=tmp_path / "data.parquet"),
+        SQLSourceConfig: SQLSourceConfig(
+            connection_url_env="DATABASE_URL",
+            query_file=tmp_path / "query.sql",
+        ),
+        APISourceConfig: APISourceConfig(
+            base_url="https://example.test",
+            endpoint="/records",
+            allowed_hosts=("example.test",),
+        ),
+    }
+
+    source = DataSourceFactory.create(kind, configs[config_type])
+
+    assert source.__class__.__name__.lower().startswith(kind)
+
+
+def test_source_factory_requires_dataframe_and_rejects_mismatches() -> None:
+    with pytest.raises(ConfigurationError, match="DataFrame is required"):
+        DataSourceFactory.create("dataframe", DataFrameSourceConfig())
+    with pytest.raises(ConfigurationError, match="Unsupported"):
+        DataSourceFactory.create("csv", JSONSourceConfig(path="data.json"))
+    with pytest.raises(ConfigurationError, match="Unsupported"):
+        DataSourceFactory.create("unknown", object())
+
+
+def test_source_factory_constructs_dataframe_source() -> None:
+    frame = pd.DataFrame({"value": [1]})
+
+    source = DataSourceFactory.create(
+        "dataframe",
+        DataFrameSourceConfig(),
+        frame=frame,
+    )
+
+    assert source.load().frame.equals(frame)
+
+
+def test_sql_source_rejects_query_escape_and_empty_query(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "sqlite://")
+    outside = tmp_path.parent / "query.sql"
+    outside.write_text("SELECT 1", encoding="utf-8")
+    with pytest.raises(DataSourceLoadError, match="inside allowed_query_root"):
+        SQLSource(
+            SQLSourceConfig(
+                connection_url_env="DATABASE_URL",
+                query_file=outside,
+                allowed_query_root=tmp_path,
+            )
+        ).load()
+
+    empty = tmp_path / "empty.sql"
+    empty.write_text(" \n", encoding="utf-8")
+    with pytest.raises(DataSourceLoadError, match="must not be empty"):
+        SQLSource(
+            SQLSourceConfig(
+                connection_url_env="DATABASE_URL",
+                query_file=empty,
+            )
+        ).load()
+
+
+def test_sql_source_rejects_missing_query_file(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "sqlite://")
+    with pytest.raises(DataSourceLoadError, match="does not exist"):
+        SQLSource(
+            SQLSourceConfig(
+                connection_url_env="DATABASE_URL",
+                query_file=tmp_path / "missing.sql",
+            )
+        ).load()
+
+
+def test_sql_source_concatenates_chunks_and_validates_result(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    query_path = tmp_path / "query.sql"
+    query_path.write_text("SELECT id FROM records", encoding="utf-8")
+    monkeypatch.setenv("DATABASE_URL", "sqlite://")
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    class Engine:
+        def connect(self):
+            return Connection()
+
+    class SQLAlchemy:
+        @staticmethod
+        def create_engine(*args, **kwargs):
+            return Engine()
+
+        @staticmethod
+        def text(value):
+            return value
+
+    monkeypatch.setattr("mlprep.data_sources.sql_source.importlib.import_module",
+                        lambda name: SQLAlchemy())
+    monkeypatch.setattr(
+        pd,
+        "read_sql_query",
+        lambda *args, **kwargs: iter(
+            [pd.DataFrame({"id": [1]}), pd.DataFrame({"id": [2]})]
+        ),
+    )
+
+    result = SQLSource(
+        SQLSourceConfig(
+            connection_url_env="DATABASE_URL",
+            query_file=query_path,
+            chunksize=1,
+        )
+    ).load()
+
+    assert result.frame["id"].tolist() == [1, 2]
+    assert result.metadata.query_fingerprint
+
+
+def test_sql_source_reports_optional_dependency_error(tmp_path, monkeypatch) -> None:
+    query_path = tmp_path / "query.sql"
+    query_path.write_text("SELECT 1", encoding="utf-8")
+    monkeypatch.setenv("DATABASE_URL", "sqlite://")
+    monkeypatch.setattr(
+        "mlprep.data_sources.sql_source.importlib.import_module",
+        lambda name: (_ for _ in ()).throw(ImportError("missing")),
+    )
+
+    with pytest.raises(DataSourceLoadError, match="optional sqlalchemy"):
+        SQLSource(
+            SQLSourceConfig(
+                connection_url_env="DATABASE_URL",
+                query_file=query_path,
+            )
+        ).load()
+
+
+def test_sql_source_wraps_execution_errors(tmp_path, monkeypatch) -> None:
+    query_path = tmp_path / "query.sql"
+    query_path.write_text("SELECT 1", encoding="utf-8")
+    monkeypatch.setenv("DATABASE_URL", "sqlite://")
+
+    class SQLAlchemy:
+        @staticmethod
+        def create_engine(*args, **kwargs):
+            raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(
+        "mlprep.data_sources.sql_source.importlib.import_module",
+        lambda name: SQLAlchemy(),
+    )
+
+    with pytest.raises(DataSourceLoadError, match="Unable to execute SQL"):
+        SQLSource(
+            SQLSourceConfig(
+                connection_url_env="DATABASE_URL",
+                query_file=query_path,
+            )
+        ).load()
