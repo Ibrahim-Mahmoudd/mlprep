@@ -17,6 +17,28 @@ Overrides are applied in this order:
 
 Unknown root and nested keys are rejected instead of silently ignored.
 
+## Data sources
+
+An optional `data_source` section records the typed source configuration and
+participates in resolved-configuration fingerprints:
+
+```yaml
+data_source:
+  type: csv
+  config:
+    path: data/customers.csv
+    encoding: utf-8
+    expected_schema:
+      customer_id: integer
+```
+
+Supported types are `dataframe`, `csv`, `json`, `jsonl`, `parquet`, `sql`, and
+`api`. Credentials are referenced by environment-variable name only; token and
+credential values are never serialized into resolved configuration or state.
+Parquet and SQL adapters use optional runtime dependencies. SQL chunks are
+combined into a DataFrame before pipeline execution, so this interface does not
+provide end-to-end streaming or out-of-core processing.
+
 Phase 6 numeric transformation overrides accept `log1p`, `signed_log1p`,
 `box_cox`, and `yeo_johnson`. Box-Cox requires strictly positive values in
 both training and transformed partitions; it does not shift zero or negative

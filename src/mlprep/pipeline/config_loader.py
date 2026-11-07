@@ -15,6 +15,7 @@ from mlprep.cross_validation.config import (
     CrossValidationConfig,
     CrossValidationStrategy,
 )
+from mlprep.data_sources.config_loader import DataSourceConfigLoader
 from mlprep.phases import (
     Phase1Config,
     Phase2Config,
@@ -62,6 +63,7 @@ class MLPrepConfigLoader:
             "pipeline",
             "output_directory",
             "save_intermediate_states",
+            "data_source",
         }
     )
 
@@ -204,6 +206,12 @@ class MLPrepConfigLoader:
             values.get("cross_validation", {})
         )
         pipeline_options = cls._pipeline_options(values)
+        data_source_value = values.get("data_source")
+        data_source = (
+            None
+            if data_source_value is None
+            else DataSourceConfigLoader.from_mapping(dict(data_source_value))
+        )
         return MLPrepConfig(
             phase1=phase1,
             phase2=phase2,
@@ -220,6 +228,7 @@ class MLPrepConfigLoader:
             ),
             cross_validation=cross_validation,
             pipeline=pipeline_options,
+            data_source=data_source,
         )
 
     @classmethod
@@ -337,7 +346,24 @@ class MLPrepConfigLoader:
                         f"Top-level {key} conflicts with pipeline.{key}."
                     )
                 pipeline_values[key] = legacy_value
-        return PipelineOptions(**pipeline_values)
+        output_directory = pipeline_values.get("output_directory")
+        if output_directory is not None and not isinstance(
+            output_directory,
+            (Path, str),
+        ):
+            raise TypeError("pipeline.output_directory must be a path or None.")
+        save_intermediate_states = pipeline_values.get(
+            "save_intermediate_states",
+            True,
+        )
+        if not isinstance(save_intermediate_states, bool):
+            raise TypeError(
+                "pipeline.save_intermediate_states must be a boolean."
+            )
+        return PipelineOptions(
+            output_directory=output_directory,
+            save_intermediate_states=save_intermediate_states,
+        )
 
     @staticmethod
     def _mapping_for_phase(

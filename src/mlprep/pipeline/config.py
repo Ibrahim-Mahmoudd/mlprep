@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from mlprep.cross_validation.config import CrossValidationConfig
+from mlprep.data_sources.config import DataSourceConfiguration
 from mlprep.phases import (
     Phase1Config,
     Phase2Config,
@@ -100,6 +101,7 @@ class MLPrepConfig(MLPrepPipelineConfig):
         default_factory=CrossValidationConfig
     )
     pipeline: PipelineOptions = field(default_factory=PipelineOptions)
+    data_source: DataSourceConfiguration | None = None
 
     def __post_init__(self) -> None:
         MLPrepPipelineConfig.__post_init__(self)
@@ -114,6 +116,12 @@ class MLPrepConfig(MLPrepPipelineConfig):
             )
         if not isinstance(self.pipeline, PipelineOptions):
             raise TypeError("pipeline must be a PipelineOptions instance.")
+        if self.data_source is not None and not isinstance(
+            self.data_source, DataSourceConfiguration
+        ):
+            raise TypeError(
+                "data_source must be a DataSourceConfiguration or None."
+            )
 
         legacy_output = self.output_directory
         pipeline_output = self.pipeline.output_directory
@@ -167,6 +175,8 @@ class MLPrepConfig(MLPrepPipelineConfig):
         config["pipeline"] = (
             PipelineExecutionManifest.configuration_value(self.pipeline)
         )
+        if self.data_source is not None:
+            config["data_source"] = self.data_source.to_dict()
         return config
 
     @property

@@ -11,6 +11,7 @@ from mlprep.data_sources.config import (
     APISourceConfig,
     CSVSourceConfig,
     DataFrameSourceConfig,
+    DataSourceConfiguration,
     JSONSourceConfig,
     ParquetSourceConfig,
     SQLSourceConfig,
@@ -32,7 +33,7 @@ class DataSourceConfigLoader:
     }
 
     @classmethod
-    def from_mapping(cls, values: dict[str, Any]) -> tuple[str, object]:
+    def from_mapping(cls, values: dict[str, Any]) -> DataSourceConfiguration:
         """Create a source config from ``type`` plus a nested ``config`` map."""
         if not isinstance(values, dict):
             raise ConfigurationError("Data-source configuration must be a mapping.")
@@ -61,10 +62,13 @@ class DataSourceConfigLoader:
             nested = {**nested, "lines": True}
             config_type = JSONSourceConfig
         normalized = _normalize_values(nested, config_type)
-        return kind, config_type(**normalized)
+        return DataSourceConfiguration(
+            source_type=kind,
+            options=config_type(**normalized),
+        )
 
     @classmethod
-    def load(cls, path: str | Path) -> tuple[str, object]:
+    def load(cls, path: str | Path) -> DataSourceConfiguration:
         """Load YAML or JSON from a file without evaluating arbitrary content."""
         source_path = Path(path)
         try:
@@ -83,13 +87,6 @@ class DataSourceConfigLoader:
 
 def _normalize_values(values: dict[str, Any], config_type: type) -> dict[str, Any]:
     normalized = dict(values)
-    if config_type in {
-        CSVSourceConfig,
-        JSONSourceConfig,
-        ParquetSourceConfig,
-        SQLSourceConfig,
-    } and isinstance(normalized.get("path"), str):
-        normalized["path"] = normalized["path"]
     for key in ("parse_dates", "missing_tokens", "columns", "allowed_hosts"):
         if key in normalized and isinstance(normalized[key], list):
             normalized[key] = tuple(normalized[key])

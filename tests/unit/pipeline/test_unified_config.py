@@ -198,3 +198,23 @@ def test_legacy_schema_version_is_accepted_and_emits_config_version() -> None:
     assert config.config_version == "1"
     assert config.resolved_configuration["config_version"] == "1"
     assert "schema_version" not in config.resolved_configuration
+
+
+def test_data_source_configuration_is_loaded_and_fingerprinted(tmp_path) -> None:
+    source = yaml.safe_load(
+        (_CONFIG_DIRECTORY / "default.yaml").read_text(encoding="utf-8")
+    )
+    source["data_source"] = {
+        "type": "csv",
+        "config": {
+            "path": str(tmp_path / "data.csv"),
+            "maximum_file_size_mb": 10,
+        },
+    }
+
+    config = MLPrepConfigLoader.from_dict(source)
+
+    assert config.data_source is not None
+    assert config.data_source.source_type == "csv"
+    assert config.resolved_configuration["data_source"]["type"] == "csv"
+    assert "data_source" in config.to_dict()

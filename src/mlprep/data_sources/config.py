@@ -121,3 +121,51 @@ class APISourceConfig:
 def _validate_local_options(maximum_file_size_mb: float) -> None:
     if maximum_file_size_mb <= 0:
         raise ValueError("maximum_file_size_mb must be positive.")
+
+
+@dataclass(frozen=True, slots=True)
+class DataSourceConfiguration:
+    """Resolved source type and its validated, secret-safe options."""
+
+    source_type: str
+    options: (
+        DataFrameSourceConfig
+        | CSVSourceConfig
+        | JSONSourceConfig
+        | ParquetSourceConfig
+        | SQLSourceConfig
+        | APISourceConfig
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize configuration without sensitive parameter values."""
+        values = {
+            "type": self.source_type,
+            "config": _serialize_dataclass(self.options),
+        }
+        return values
+
+
+def _serialize_dataclass(value: Any) -> Any:
+    if hasattr(value, "__dataclass_fields__"):
+        return {
+            name: _serialize_dataclass(getattr(value, name))
+            for name in value.__dataclass_fields__
+        }
+    if isinstance(value, dict):
+        return {
+            str(key): (
+                "<redacted>"
+                if any(
+                    marker in str(key).casefold()
+                    for marker in ("password", "secret", "token", "credential")
+                )
+                else _serialize_dataclass(item)
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, (tuple, list)):
+        return [_serialize_dataclass(item) for item in value]
+    if isinstance(value, Path):
+        return str(value)
+    return value

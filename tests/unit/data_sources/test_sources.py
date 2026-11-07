@@ -10,6 +10,7 @@ from mlprep.data_sources import (
     CSVSource,
     CSVSourceConfig,
     DataFrameSource,
+    DataSourceConfiguration,
     JSONSource,
     JSONSourceConfig,
     ParquetSource,
@@ -135,6 +136,29 @@ def test_config_loader_rejects_unknown_keys_and_loads_yaml(tmp_path) -> None:
     )
     with pytest.raises(ConfigurationError, match="Unknown"):
         DataSourceConfigLoader.load(path)
+
+
+def test_config_loader_returns_secret_safe_typed_configuration(tmp_path) -> None:
+    path = tmp_path / "source.json"
+    path.write_text(
+        json.dumps(
+            {
+                "type": "sql",
+                "config": {
+                    "connection_url_env": "MLPREP_DATABASE_URL",
+                    "query_file": "query.sql",
+                    "query_parameters": {"customer_token": "secret-value"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    resolved = DataSourceConfigLoader.load(path)
+
+    assert isinstance(resolved, DataSourceConfiguration)
+    assert resolved.source_type == "sql"
+    assert "secret-value" not in repr(resolved.to_dict())
 
 
 def test_api_source_uses_token_only_in_authorization_header(monkeypatch) -> None:
