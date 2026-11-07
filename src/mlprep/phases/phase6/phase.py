@@ -39,7 +39,6 @@ from mlprep.phases.phase6.validation import (
     UnknownCategoryValidator,
 )
 
-
 ComponentResult = TypeVar(
     "ComponentResult"
 )

@@ -14,7 +14,6 @@ from mlprep.phases.phase3.diagnostics.rare_categories import (
     RareCategoryDiagnosticResult,
 )
 
-
 EncodingMethod = Literal[
     "one_hot",
     "ordinal",

@@ -21,7 +21,6 @@ from mlprep.types import (
     TaskType,
 )
 
-
 MissingTargetPolicy = Literal[
     "report",
     "raise",

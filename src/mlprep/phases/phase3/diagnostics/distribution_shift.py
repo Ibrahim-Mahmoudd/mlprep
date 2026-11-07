@@ -14,7 +14,6 @@ from mlprep.phases.phase3.contract.column_selection import (
 )
 from mlprep.phases.phase3.contract.eda_contract import EDAContract
 
-
 ShiftLevel = Literal[
     "none",
     "low",

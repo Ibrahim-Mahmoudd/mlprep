@@ -12,7 +12,6 @@ from mlprep.phases.phase4.strategies.base import (
     ImputerExecutionMode,
 )
 
-
 TemporalImputationMethod = Literal[
     "forward_fill",
     "forward_fill_then_constant",

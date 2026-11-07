@@ -13,8 +13,8 @@ from mlprep.phases.phase1.inspection.physical_types import (
     PhysicalTypeInspector,
 )
 from mlprep.phases.phase1.inspection.semantic_types import (
-    SemanticTypeInferer,
     SemanticTypeInferenceOptions,
+    SemanticTypeInferer,
     SemanticTypeOverride,
 )
 from mlprep.phases.phase1.inspection.temporal_detection import (

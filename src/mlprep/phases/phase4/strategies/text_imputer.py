@@ -11,7 +11,6 @@ from mlprep.phases.phase4.strategies.base import (
     BaseImputer,
 )
 
-
 TextImputationMethod = Literal[
     "constant",
     "empty_string",

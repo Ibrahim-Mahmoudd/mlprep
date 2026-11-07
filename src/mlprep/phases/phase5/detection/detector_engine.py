@@ -33,7 +33,6 @@ from mlprep.phases.phase5.detection.robust_zscore_detector import (
     RobustZScoreDetectorOptions,
 )
 
-
 DetectorType = (
     IQRDetector
     | QuantileDetector

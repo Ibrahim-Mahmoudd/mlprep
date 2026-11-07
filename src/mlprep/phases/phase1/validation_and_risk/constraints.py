@@ -20,7 +20,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 ConstraintSeverity = Literal[
     "info",
     "warning",

@@ -11,7 +11,6 @@ from mlprep.phases.phase3.profiling.numeric_profile import (
     NumericColumnProfile,
 )
 
-
 OutlierTreatment = Literal[
     "none",
     "report_only",

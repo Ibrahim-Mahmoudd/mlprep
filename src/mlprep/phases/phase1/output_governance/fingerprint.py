@@ -22,7 +22,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 FingerprintAlgorithm = Literal[
     "sha256",
     "sha512",

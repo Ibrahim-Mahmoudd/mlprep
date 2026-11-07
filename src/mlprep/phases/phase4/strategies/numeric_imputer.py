@@ -12,7 +12,6 @@ from mlprep.phases.phase4.strategies.base import (
     BaseImputer,
 )
 
-
 NumericImputationMethod = Literal[
     "mean",
     "median",

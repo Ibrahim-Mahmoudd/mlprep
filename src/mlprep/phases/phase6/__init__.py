@@ -46,7 +46,6 @@ from mlprep.phases.phase6.phase import (
     Phase6,
 )
 
-
 __all__ = [
     "CategoricalEncodingKind",
     "FeatureEngineeringKind",

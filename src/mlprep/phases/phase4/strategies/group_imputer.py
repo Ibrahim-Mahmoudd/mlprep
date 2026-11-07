@@ -13,7 +13,6 @@ from mlprep.phases.phase4.strategies.base import (
     ImputerExecutionMode,
 )
 
-
 GroupAggregationMethod = Literal[
     "mean",
     "median",

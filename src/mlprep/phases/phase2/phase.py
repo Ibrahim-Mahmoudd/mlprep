@@ -105,7 +105,6 @@ from mlprep.phases.phase2.validation.temporal_boundaries import (
 )
 from mlprep.types import TaskType
 
-
 ComponentResult = TypeVar("ComponentResult")
 
 

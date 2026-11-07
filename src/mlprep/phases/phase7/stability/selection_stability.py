@@ -15,7 +15,6 @@ from mlprep.phases.phase7.selectors.base import (
     SelectorState,
 )
 
-
 SelectorFactory = Callable[
     [],
     object,

@@ -20,6 +20,10 @@ from mlprep.phases.phase1.validation_and_risk.leakage_risks import (
     LeakageRiskDetector,
     LeakageRiskOptions,
 )
+from mlprep.phases.phase1.validation_and_risk.row_identity import (
+    RowIdentityManager,
+    RowIdentityOptions,
+)
 from mlprep.phases.phase1.validation_and_risk.sensitive_data import (
     SensitiveDataDetector,
     SensitiveDataOptions,
@@ -27,10 +31,6 @@ from mlprep.phases.phase1.validation_and_risk.sensitive_data import (
 from mlprep.phases.phase1.validation_and_risk.target_validation import (
     TargetValidationOptions,
     TargetValidator,
-)
-from mlprep.phases.phase1.validation_and_risk.row_identity import (
-    RowIdentityManager,
-    RowIdentityOptions,
 )
 
 __all__ = [

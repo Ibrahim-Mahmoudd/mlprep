@@ -51,7 +51,6 @@ from mlprep.phases.phase8.weighting import (
     SampleWeightOptions,
 )
 
-
 ConfigFormat = Literal[
     "yaml",
     "json",

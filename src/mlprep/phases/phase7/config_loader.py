@@ -7,8 +7,8 @@ from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, ClassVar, Union, get_args, get_origin, get_type_hints
 from types import UnionType
+from typing import Any, ClassVar, Union, get_args, get_origin, get_type_hints
 
 import yaml
 from pydantic import BaseModel

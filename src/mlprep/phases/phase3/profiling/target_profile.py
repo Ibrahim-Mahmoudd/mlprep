@@ -15,7 +15,6 @@ from mlprep.phases.phase3.contract.eda_contract import (
 )
 from mlprep.types import TaskType
 
-
 TargetProfileKind = Literal[
     "classification",
     "regression",

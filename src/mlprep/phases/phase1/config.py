@@ -50,9 +50,6 @@ from mlprep.phases.phase1.output_governance.readiness import (
 from mlprep.phases.phase1.output_governance.report import (
     ReportOptions,
 )
-from mlprep.phases.phase1.validation_and_risk.row_identity import (
-    RowIdentityOptions,
-)
 from mlprep.phases.phase1.output_governance.schema import (
     SchemaBuilderOptions,
 )
@@ -67,6 +64,9 @@ from mlprep.phases.phase1.validation_and_risk.duplicate_rows import (
 )
 from mlprep.phases.phase1.validation_and_risk.leakage_risks import (
     LeakageRiskOptions,
+)
+from mlprep.phases.phase1.validation_and_risk.row_identity import (
+    RowIdentityOptions,
 )
 from mlprep.phases.phase1.validation_and_risk.sensitive_data import (
     SensitiveDataOptions,

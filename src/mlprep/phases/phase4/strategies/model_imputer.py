@@ -13,7 +13,6 @@ from mlprep.phases.phase4.strategies.base import (
     ImputerExecutionMode,
 )
 
-
 ModelImputationTask = Literal[
     "regression",
     "classification",

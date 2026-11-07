@@ -11,7 +11,6 @@ from mlprep.phases.phase4.strategies.base import (
     BaseImputer,
 )
 
-
 CategoricalImputationMethod = Literal[
     "most_frequent",
     "constant",

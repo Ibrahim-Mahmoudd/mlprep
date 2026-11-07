@@ -25,7 +25,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 ExistingColumnPolicy = Literal[
     "raise",
     "validate",
