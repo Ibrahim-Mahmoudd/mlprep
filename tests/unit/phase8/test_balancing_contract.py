@@ -134,6 +134,28 @@ def test_resolver_reads_state_from_phase7_result_and_rejects_missing_state() -> 
         BalancingContractResolver().resolve(phase7_result=result)
 
 
+def test_resolver_rejects_invalid_result_and_unauthorized_test_partition() -> None:
+    resolver = BalancingContractResolver()
+    with pytest.raises(TypeError, match="phase7_result"):
+        resolver.resolve(phase7_result=object())  # type: ignore[arg-type]
+
+    with pytest.raises(PermissionError, match="authorized selected"):
+        resolver.resolve(
+            phase7_result=_result(),
+            phase7_state=_state(),
+            authorized_test_partition=object(),  # type: ignore[arg-type]
+        )
+
+
+def test_empty_training_schema_is_reported() -> None:
+    result = _result()
+    result.train.X = result.train.X.iloc[:, :0]
+
+    contract = _resolve(result)
+
+    assert any(issue.code == "P8-CONTRACT-019" for issue in contract.issues)
+
+
 def test_contract_readiness_reports_blocking_issues_and_empty_class_counts() -> None:
     contract = _resolve()
     contract.training_class_counts.clear()
