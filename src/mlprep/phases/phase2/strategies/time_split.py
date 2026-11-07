@@ -107,6 +107,7 @@ class TimeSplitStrategy(BaseSplitStrategy):
         parsed_timestamps = pd.to_datetime(
             contract.data[timestamp_column],
             errors="coerce",
+            format="mixed",
         )
 
         invalid_mask = (

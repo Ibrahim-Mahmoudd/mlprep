@@ -27,7 +27,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 DateOrder = Literal[
     "DMY",
     "MDY",
@@ -225,6 +224,7 @@ class TemporalDetector:
         parsed_sample = pd.to_datetime(
             sample,
             errors="coerce",
+            format="mixed",
             dayfirst=(
                 self.options.date_order == "DMY"
             ),

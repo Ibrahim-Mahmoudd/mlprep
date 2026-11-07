@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 import pandas as pd
 from pandas.api.types import (
     is_bool_dtype,
-    is_categorical_dtype,
     is_complex_dtype,
     is_datetime64_any_dtype,
     is_float_dtype,
@@ -205,7 +204,7 @@ class PhysicalTypeInspector:
         if is_timedelta64_dtype(dtype):
             return PhysicalType.TIMEDELTA
 
-        if is_categorical_dtype(dtype):
+        if isinstance(dtype, pd.CategoricalDtype):
             return PhysicalType.CATEGORY
 
         if is_string_dtype(dtype):

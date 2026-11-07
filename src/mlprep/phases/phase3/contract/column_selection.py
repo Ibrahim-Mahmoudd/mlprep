@@ -8,7 +8,6 @@ from numbers import Number
 import pandas as pd
 from pandas.api.types import (
     is_bool_dtype,
-    is_categorical_dtype,
     is_datetime64_any_dtype,
     is_numeric_dtype,
     is_object_dtype,
@@ -536,7 +535,7 @@ class ColumnSelector:
         if is_numeric_dtype(dtype):
             return "numeric"
 
-        if is_categorical_dtype(dtype):
+        if isinstance(dtype, pd.CategoricalDtype):
             return "categorical"
 
         if is_object_dtype(dtype):

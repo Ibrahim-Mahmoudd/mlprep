@@ -342,7 +342,7 @@ class TargetPlotGenerator:
 
             axis.boxplot(
                 target,
-                vert=False,
+                orientation="horizontal",
             )
 
             axis.set_title(spec.title)

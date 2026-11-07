@@ -148,7 +148,7 @@ class NumericPlotGenerator:
             image_format=self.options.image_format,
         )
         figure, axis = plt.subplots()
-        axis.boxplot(values, vert=False)
+        axis.boxplot(values, orientation="horizontal")
         axis.set_title(spec.title)
         axis.set_xlabel(column)
         axis.set_yticks([])
