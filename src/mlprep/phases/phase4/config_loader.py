@@ -101,7 +101,11 @@ class Phase4ConfigLoader:
         if suffix not in cls.supported_extensions:
             raise ValueError(f"Unsupported configuration extension: {suffix!r}")
         text = input_path.read_text(encoding="utf-8")
-        values = yaml.safe_load(text) if suffix in {".yaml", ".yml"} else json.loads(text)
+        values = (
+            yaml.safe_load(text)
+            if suffix in {".yaml", ".yml"}
+            else json.loads(text)
+        )
         if values is None:
             raise ValueError(f"Configuration is empty: {input_path}")
         if not isinstance(values, dict):
@@ -115,16 +119,27 @@ class Phase4ConfigLoader:
         if unknown:
             raise ValueError(f"Unknown Phase 4 sections: {sorted(unknown)}")
 
-        execution = Phase4ExecutionOptions(**cls._mapping(root.get("execution", {}), "execution"))
-        contract = ImputationContractOptions(**cls._mapping(root.get("contract", {}), "contract"))
+        execution = Phase4ExecutionOptions(
+            **cls._mapping(root.get("execution", {}), "execution")
+        )
+        contract = ImputationContractOptions(
+            **cls._mapping(root.get("contract", {}), "contract")
+        )
         plan = cls._build_plan(root.get("plan", {}))
         scanner = MissingnessScannerOptions(
-            **cls._mapping(root.get("missingness_scanner", {}), "missingness_scanner")
+            **cls._mapping(
+                root.get("missingness_scanner", {}),
+                "missingness_scanner",
+            )
         )
         pipeline = cls._build_pipeline(root.get("pipeline", {}))
         validation = cls._build_validation(root.get("validation", {}))
-        readiness = Phase4ReadinessOptions(**cls._mapping(root.get("readiness", {}), "readiness"))
-        reporting = Phase4ReportOptions(**cls._mapping(root.get("reporting", {}), "reporting"))
+        readiness = Phase4ReadinessOptions(
+            **cls._mapping(root.get("readiness", {}), "readiness")
+        )
+        reporting = Phase4ReportOptions(
+            **cls._mapping(root.get("reporting", {}), "reporting")
+        )
         return Phase4Config(
             execution=execution,
             contract=contract,
@@ -149,15 +164,24 @@ class Phase4ConfigLoader:
         if "method_overrides" in data:
             data["method_overrides"] = {
                 str(column): ImputationMethodName(method)
-                for column, method in cls._mapping(data["method_overrides"], "plan.method_overrides").items()
+                for column, method in cls._mapping(
+                    data["method_overrides"],
+                    "plan.method_overrides",
+                ).items()
             }
         return ImputationPlanOptions(**data)
 
     @classmethod
     def _build_pipeline(cls, values: object) -> ImputationPipelineOptions:
         data = cls._mapping(values, "pipeline")
-        invalid_data = cls._mapping(data.pop("invalid_values", {}), "pipeline.invalid_values")
-        raw_rules = cls._mapping(invalid_data.pop("rules", {}), "pipeline.invalid_values.rules")
+        invalid_data = cls._mapping(
+            data.pop("invalid_values", {}),
+            "pipeline.invalid_values",
+        )
+        raw_rules = cls._mapping(
+            invalid_data.pop("rules", {}),
+            "pipeline.invalid_values.rules",
+        )
         rules = {
             str(column): InvalidValueRule(
                 column=str(column),
@@ -167,32 +191,62 @@ class Phase4ConfigLoader:
         }
         invalid = InvalidValueScannerOptions(rules=rules, **invalid_data)
         tokens = MissingTokenDetectorOptions(
-            **cls._mapping(data.pop("missing_tokens", {}), "pipeline.missing_tokens")
+            **cls._mapping(
+                data.pop("missing_tokens", {}),
+                "pipeline.missing_tokens",
+            )
         )
-        indicator_data = cls._mapping(data.pop("indicators", {}), "pipeline.indicators")
-        naming_data = cls._mapping(indicator_data.pop("naming", {}), "pipeline.indicators.naming")
+        indicator_data = cls._mapping(
+            data.pop("indicators", {}),
+            "pipeline.indicators",
+        )
+        naming_data = cls._mapping(
+            indicator_data.pop("naming", {}),
+            "pipeline.indicators.naming",
+        )
         if "collision_policy" in naming_data:
-            naming_data["collision_policy"] = IndicatorCollisionPolicy(naming_data["collision_policy"])
+            naming_data["collision_policy"] = IndicatorCollisionPolicy(
+                naming_data["collision_policy"]
+            )
         indicators = MissingIndicatorOptions(
             naming=IndicatorNamingOptions(**naming_data),
             **indicator_data,
         )
         transformer = PartitionTransformerOptions(
-            **cls._mapping(data.pop("partition_transformer", {}), "pipeline.partition_transformer")
+            **cls._mapping(
+                data.pop("partition_transformer", {}),
+                "pipeline.partition_transformer",
+            )
         )
         result = ImputationPipelineOptions(
             invalid_values=invalid,
             missing_tokens=tokens,
             indicators=indicators,
             partition_transformer=transformer,
-            numeric=NumericImputerOptions(**cls._mapping(data.pop("numeric", {}), "pipeline.numeric")),
-            categorical=CategoricalImputerOptions(**cls._mapping(data.pop("categorical", {}), "pipeline.categorical")),
-            boolean=BooleanImputerOptions(**cls._mapping(data.pop("boolean", {}), "pipeline.boolean")),
-            datetime=DatetimeImputerOptions(**cls._mapping(data.pop("datetime", {}), "pipeline.datetime")),
-            text=TextImputerOptions(**cls._mapping(data.pop("text", {}), "pipeline.text")),
-            group=GroupImputerOptions(**cls._mapping(data.pop("group", {}), "pipeline.group")),
-            temporal=TemporalImputerOptions(**cls._mapping(data.pop("temporal", {}), "pipeline.temporal")),
-            model=ModelImputerOptions(**cls._mapping(data.pop("model", {}), "pipeline.model")),
+            numeric=NumericImputerOptions(
+                **cls._mapping(data.pop("numeric", {}), "pipeline.numeric")
+            ),
+            categorical=CategoricalImputerOptions(
+                **cls._mapping(data.pop("categorical", {}), "pipeline.categorical")
+            ),
+            boolean=BooleanImputerOptions(
+                **cls._mapping(data.pop("boolean", {}), "pipeline.boolean")
+            ),
+            datetime=DatetimeImputerOptions(
+                **cls._mapping(data.pop("datetime", {}), "pipeline.datetime")
+            ),
+            text=TextImputerOptions(
+                **cls._mapping(data.pop("text", {}), "pipeline.text")
+            ),
+            group=GroupImputerOptions(
+                **cls._mapping(data.pop("group", {}), "pipeline.group")
+            ),
+            temporal=TemporalImputerOptions(
+                **cls._mapping(data.pop("temporal", {}), "pipeline.temporal")
+            ),
+            model=ModelImputerOptions(
+                **cls._mapping(data.pop("model", {}), "pipeline.model")
+            ),
         )
         if data:
             raise ValueError(f"Unknown pipeline options: {sorted(data)}")
@@ -210,19 +264,34 @@ class Phase4ConfigLoader:
             raise ValueError(f"Unknown validation options: {sorted(unknown)}")
         return Phase4ValidationOptions(
             remaining_missingness=RemainingMissingnessOptions(
-                **cls._mapping(data.get("remaining_missingness", {}), "validation.remaining_missingness")
+                **cls._mapping(
+                    data.get("remaining_missingness", {}),
+                    "validation.remaining_missingness",
+                )
             ),
             schema_consistency=SchemaConsistencyOptions(
-                **cls._mapping(data.get("schema_consistency", {}), "validation.schema_consistency")
+                **cls._mapping(
+                    data.get("schema_consistency", {}),
+                    "validation.schema_consistency",
+                )
             ),
             target_integrity=TargetIntegrityOptions(
-                **cls._mapping(data.get("target_integrity", {}), "validation.target_integrity")
+                **cls._mapping(
+                    data.get("target_integrity", {}),
+                    "validation.target_integrity",
+                )
             ),
             row_integrity=RowIntegrityOptions(
-                **cls._mapping(data.get("row_integrity", {}), "validation.row_integrity")
+                **cls._mapping(
+                    data.get("row_integrity", {}),
+                    "validation.row_integrity",
+                )
             ),
             distribution_impact=DistributionImpactOptions(
-                **cls._mapping(data.get("distribution_impact", {}), "validation.distribution_impact")
+                **cls._mapping(
+                    data.get("distribution_impact", {}),
+                    "validation.distribution_impact",
+                )
             ),
         )
 
@@ -238,7 +307,11 @@ class Phase4ConfigLoader:
         output = Path(path)
         if output.exists() and not overwrite:
             raise FileExistsError(f"Configuration already exists: {output}")
-        fmt = config_format or ("yaml" if output.suffix.casefold() in {".yaml", ".yml"} else "json")
+        fmt = config_format or (
+            "yaml"
+            if output.suffix.casefold() in {".yaml", ".yml"}
+            else "json"
+        )
         output.parent.mkdir(parents=True, exist_ok=True)
         values = config.to_dict()
         content = (
@@ -250,7 +323,12 @@ class Phase4ConfigLoader:
         return output
 
     @classmethod
-    def merge(cls, *, base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[str, Any]:
+    def merge(
+        cls,
+        *,
+        base: Mapping[str, Any],
+        override: Mapping[str, Any],
+    ) -> dict[str, Any]:
         merged = deepcopy(dict(base))
         for key, value in override.items():
             if isinstance(merged.get(key), Mapping) and isinstance(value, Mapping):

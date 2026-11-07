@@ -519,7 +519,11 @@ class SchemaConsistencyValidator:
         ):
             return True
 
-        return bool(self.options.allow_numeric_width_equivalence and normalized_reference in {"integer", "floating"} and normalized_reference == normalized_candidate)
+        return bool(
+            self.options.allow_numeric_width_equivalence
+            and normalized_reference in {"integer", "floating"}
+            and normalized_reference == normalized_candidate
+        )
 
     @staticmethod
     def _normalize_dtype(

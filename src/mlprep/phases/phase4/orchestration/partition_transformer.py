@@ -196,7 +196,9 @@ class PartitionTransformer:
             feature_count_after=len(frame.columns),
             missing_before=missing_before,
             missing_after=int(frame.isna().sum().sum()),
-            total_imputed_count=sum(item.imputed_count for item in column_metadata.values()),
+            total_imputed_count=sum(
+                item.imputed_count for item in column_metadata.values()
+            ),
             generated_indicator_columns=(
                 list(indicator_result.generated_columns)
                 if indicator_result is not None
@@ -253,9 +255,17 @@ class PartitionTransformer:
                 partition=partition,
                 method=entry.method.value,
                 missing_before=missing_before,
-                missing_after=0 if self.options.allow_drop_feature_entries else missing_before,
+                missing_after=(
+                    0
+                    if self.options.allow_drop_feature_entries
+                    else missing_before
+                ),
                 input_dtype=input_dtype,
-                output_dtype="dropped" if self.options.allow_drop_feature_entries else input_dtype,
+                output_dtype=(
+                    "dropped"
+                    if self.options.allow_drop_feature_entries
+                    else input_dtype
+                ),
                 transformed=self.options.allow_drop_feature_entries,
                 skipped=not self.options.allow_drop_feature_entries,
                 skip_reason=(
