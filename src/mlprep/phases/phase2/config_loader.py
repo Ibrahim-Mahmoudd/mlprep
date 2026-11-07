@@ -105,7 +105,6 @@ from mlprep.phases.phase2.validation.temporal_boundaries import (
     TemporalBoundaryValidationOptions,
 )
 
-
 ConfigFormat = Literal[
     "yaml",
     "json",

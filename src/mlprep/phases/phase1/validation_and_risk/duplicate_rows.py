@@ -19,7 +19,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 DuplicateRowPolicy = Literal[
     "report",
     "raise",

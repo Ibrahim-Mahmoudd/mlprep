@@ -128,7 +128,6 @@ from mlprep.phases.phase3.visualization.plot_spec import (
     PlotCollection,
 )
 
-
 ComponentResult = TypeVar("ComponentResult")
 
 

@@ -27,7 +27,6 @@ from mlprep.phases.phase2.output_governance.state import (
     SplitColumnState,
 )
 
-
 MissingGroupPolicy = Literal[
     "raise",
     "warn",

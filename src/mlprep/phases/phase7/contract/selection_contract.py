@@ -21,7 +21,6 @@ from mlprep.phases.phase6.output_governance.state import (
     Phase6State,
 )
 
-
 ContractSeverity = Literal[
     "info",
     "warning",

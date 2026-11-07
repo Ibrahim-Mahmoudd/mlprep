@@ -126,7 +126,6 @@ from mlprep.phases.phase3.visualization.target_plots import (
     TargetPlotOptions,
 )
 
-
 ConfigFormat = Literal[
     "yaml",
     "json",

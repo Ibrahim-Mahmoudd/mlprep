@@ -55,9 +55,6 @@ from mlprep.phases.phase1.output_governance.result import (
     Phase1Result,
     ReadinessDecision,
 )
-from mlprep.phases.phase1.validation_and_risk.row_identity import (
-    RowIdentityManager,
-)
 from mlprep.phases.phase1.output_governance.schema import (
     SchemaBuilder,
 )
@@ -75,6 +72,9 @@ from mlprep.phases.phase1.validation_and_risk.duplicate_rows import (
 )
 from mlprep.phases.phase1.validation_and_risk.leakage_risks import (
     LeakageRiskDetector,
+)
+from mlprep.phases.phase1.validation_and_risk.row_identity import (
+    RowIdentityManager,
 )
 from mlprep.phases.phase1.validation_and_risk.sensitive_data import (
     SensitiveDataDetector,

@@ -12,7 +12,6 @@ import yaml
 
 from mlprep.phases.phase1.config import Phase1Config
 
-
 ConfigFormat = Literal[
     "yaml",
     "json",

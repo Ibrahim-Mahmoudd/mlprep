@@ -24,7 +24,6 @@ from mlprep.phases.phase2.output_governance.state import (
     Phase2State,
 )
 
-
 FingerprintAlgorithm = Literal[
     "sha256",
     "sha512",

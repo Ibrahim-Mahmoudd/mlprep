@@ -22,7 +22,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 CardinalityBand = Literal[
     "empty",
     "constant",

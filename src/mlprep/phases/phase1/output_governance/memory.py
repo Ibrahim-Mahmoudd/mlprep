@@ -28,7 +28,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 MemoryOptimizationLevel = Literal[
     "disabled",
     "safe",

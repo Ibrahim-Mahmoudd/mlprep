@@ -12,7 +12,6 @@ from mlprep.phases.phase3.diagnostics.skewness import (
     SkewnessDiagnosticResult,
 )
 
-
 TransformationMethod = Literal[
     "none",
     "log",

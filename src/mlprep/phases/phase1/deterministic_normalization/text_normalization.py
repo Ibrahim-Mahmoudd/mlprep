@@ -24,7 +24,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 TextCaseStyle = Literal[
     "preserve",
     "lower",

@@ -26,7 +26,6 @@ from mlprep.types import (
     Severity,
 )
 
-
 MissingToken: TypeAlias = str | int | float
 
 

@@ -20,7 +20,6 @@ from mlprep.phases.phase3.relationships.target_associations import (
     TargetAssociationResult,
 )
 
-
 InteractionKind = Literal[
     "numeric_product",
     "numeric_ratio",
