@@ -138,6 +138,52 @@ def test_pipeline_runs_all_phases_and_persists_atomic_outputs(
         pipeline.run(data=changed_source, resume=True)
 
 
+def test_pipeline_resume_rejects_configuration_mismatch(tmp_path) -> None:
+    output_directory = tmp_path / "run"
+    source = _source_data()
+    MLPrepPipeline(
+        _pipeline_config(output_directory=output_directory)
+    ).run(data=source)
+
+    changed_config = _pipeline_config(output_directory=output_directory)
+    changed_config.phase3.execution.enabled = False
+    with pytest.raises(
+        PipelineResumeError,
+        match="Configuration fingerprint",
+    ):
+        MLPrepPipeline(changed_config).run(data=source, resume=True)
+
+
+def test_pipeline_resume_rejects_corrupt_checkpoint(tmp_path) -> None:
+    output_directory = tmp_path / "run"
+    source = _source_data()
+    MLPrepPipeline(
+        _pipeline_config(output_directory=output_directory)
+    ).run(data=source)
+    (output_directory / "checkpoint.json").write_text(
+        "{not-json",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError):
+        MLPrepPipeline(
+            _pipeline_config(output_directory=output_directory)
+        ).run(data=source, resume=True)
+
+
+def test_pipeline_resume_requires_checkpoint_and_rejects_dry_run() -> None:
+    source = _source_data()
+    with pytest.raises(PipelineResumeError, match="explicit output_directory"):
+        MLPrepPipeline(_pipeline_config()).run(data=source, resume=True)
+
+    with pytest.raises(ValueError, match="cannot be combined"):
+        MLPrepPipeline(_pipeline_config()).run(
+            data=source,
+            dry_run=True,
+            resume=True,
+        )
+
+
 def test_pipeline_accepts_unified_dataframe_source_contract() -> None:
     config = _pipeline_config()
     source = DataFrameSource(_source_data())
