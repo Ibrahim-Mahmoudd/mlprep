@@ -177,6 +177,76 @@ def test_phase7_state_requirement_can_be_disabled() -> None:
 
 
 @pytest.mark.parametrize(
+    ("partition", "code"),
+    [
+        ("train", "P8-CONTRACT-011"),
+        ("validation", "P8-CONTRACT-011"),
+        ("test", "P8-CONTRACT-011"),
+    ],
+)
+def test_partition_names_are_checked(
+    partition: str,
+    code: str,
+) -> None:
+    result = _result()
+    replacement = (
+        PartitionName.TEST
+        if partition != "test"
+        else PartitionName.TRAIN
+    )
+    getattr(result, partition).name = replacement
+
+    contract = _resolve(result)
+
+    assert any(issue.code == code for issue in contract.issues)
+
+
+@pytest.mark.parametrize(
+    ("partition", "code"),
+    [
+        ("train", "P8-CONTRACT-012"),
+        ("validation", "P8-CONTRACT-013"),
+        ("test", "P8-CONTRACT-014"),
+    ],
+)
+def test_empty_partitions_are_rejected(
+    partition: str,
+    code: str,
+) -> None:
+    result = _result()
+    empty = DatasetPartition(
+        name=getattr(result, partition).name,
+        X=pd.DataFrame(
+            {"feature_a": pd.Series(dtype="float64")},
+        ),
+        y=pd.Series(dtype="int64", name="target"),
+        row_ids=pd.Series(dtype="string", name="row_id"),
+    )
+    setattr(result, partition, empty)
+
+    contract = _resolve(result)
+
+    assert any(issue.code == code for issue in contract.issues)
+
+
+def test_contract_options_can_disable_schema_and_identity_requirements() -> None:
+    result = _result()
+    result.validation.X = result.validation.X.drop(columns="feature_b")
+    result.validation.row_ids.iloc[0] = result.train.row_ids.iloc[0]
+    options = BalancingContractOptions(
+        require_identical_feature_schema=False,
+        require_identical_feature_order=False,
+        require_compatible_feature_dtypes=False,
+        require_disjoint_row_ids=False,
+    )
+
+    contract = _resolve(result, options=options)
+
+    assert "P8-CONTRACT-021" not in {issue.code for issue in contract.issues}
+    assert "P8-CONTRACT-018" not in {issue.code for issue in contract.issues}
+
+
+@pytest.mark.parametrize(
     ("mutation", "code"),
     [
         ("schema", "P8-CONTRACT-021"),
